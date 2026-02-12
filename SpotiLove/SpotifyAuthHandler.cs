@@ -11,7 +11,7 @@ public class SpotifyAuthHandler
         try
         {
             Debug.WriteLine("======================================");
-            Debug.WriteLine($"🔐 Processing Spotify callback: {uri}");
+            Debug.WriteLine($"   Processing Spotify callback: {uri}");
             Debug.WriteLine("======================================");
 
             var parsedUri = new Uri(uri);
@@ -22,48 +22,48 @@ public class SpotifyAuthHandler
             var isNewUserStr = queryParams["isNewUser"];
             var name = queryParams["name"];
 
-            Debug.WriteLine($"📋 Parsed parameters:");
-            Debug.WriteLine($"   Token: {(token != null ? $"{token.Substring(0, Math.Min(8, token.Length))}..." : "null")}");
-            Debug.WriteLine($"   UserId: {userIdStr}");
-            Debug.WriteLine($"   IsNew: {isNewUserStr}");
-            Debug.WriteLine($"   Name: {name}");
+            Debug.WriteLine($"Parsed parameters:");
+            Debug.WriteLine($"Token: {(token != null ? $"{token.Substring(0, Math.Min(8, token.Length))}..." : "null")}");
+            Debug.WriteLine($"UserId: {userIdStr}");
+            Debug.WriteLine($"IsNew: {isNewUserStr}");
+            Debug.WriteLine($"Name: {name}");
 
             if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(userIdStr))
             {
-                Debug.WriteLine("❌ Missing token or userId in callback");
+                Debug.WriteLine(" Missing token or userId in callback");
                 await SafeDisplayAlert("Error", "Invalid authentication response");
                 return;
             }
 
             if (!Guid.TryParse(userIdStr, out Guid userId))
             {
-                Debug.WriteLine($"❌ Invalid userId format: {userIdStr}");
+                Debug.WriteLine($" Invalid userId format: {userIdStr}");
                 await SafeDisplayAlert("Error", "Invalid user ID in response");
                 return;
             }
 
             bool isNewUser = bool.Parse(isNewUserStr ?? "false");
 
-            Debug.WriteLine($"✅ Valid parameters parsed - UserId: {userId}");
+            Debug.WriteLine($" Valid parameters parsed - UserId: {userId}");
 
             // Store authentication data
             await SecureStorage.SetAsync("auth_token", token);
             await SecureStorage.SetAsync("user_id", userId.ToString());
-            Debug.WriteLine("✅ Saved auth token and user ID to secure storage");
+            Debug.WriteLine(" Saved auth token and user ID to secure storage");
 
             // Fetch full user profile from API
-            Debug.WriteLine("🌐 Fetching user profile from API...");
+            Debug.WriteLine(" Fetching user profile from API...");
             using var httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri("https://spotilove.danielnaz.com");
             httpClient.Timeout = TimeSpan.FromSeconds(30);
 
             var response = await httpClient.GetAsync($"/users/{userId}");
-            Debug.WriteLine($"📡 API Response: {response.StatusCode}");
+            Debug.WriteLine($" API Response: {response.StatusCode}");
 
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"📄 Response length: {content.Length} characters");
+                Debug.WriteLine($" Response length: {content.Length} characters");
 
                 var userResponse = JsonSerializer.Deserialize<ApiUserResponse>(
                     content,
@@ -71,7 +71,7 @@ public class SpotifyAuthHandler
 
                 if (userResponse?.User != null)
                 {
-                    Debug.WriteLine($"✅ User data deserialized: {userResponse.User.Name}");
+                    Debug.WriteLine($" User data deserialized: {userResponse.User.Name}");
 
                     // Set global user data
                     UserData.Current = new UserData
@@ -85,7 +85,7 @@ public class SpotifyAuthHandler
                     await SecureStorage.SetAsync("user_name", userResponse.User.Name ?? "");
                     await SecureStorage.SetAsync("user_email", userResponse.User.Email ?? "");
 
-                    Debug.WriteLine($"✅ UserData.Current set:");
+                    Debug.WriteLine($" UserData.Current set:");
                     Debug.WriteLine($"   ID: {UserData.Current.Id}");
                     Debug.WriteLine($"   Name: {UserData.Current.Name}");
                     Debug.WriteLine($"   Email: {UserData.Current.Email}");
@@ -101,7 +101,7 @@ public class SpotifyAuthHandler
                                                userResponse.User.MusicProfile.FavoriteGenres?.Count == 0 &&
                                                userResponse.User.MusicProfile.FavoriteSongs?.Count == 0);
 
-                    Debug.WriteLine($"📊 Profile status:");
+                    Debug.WriteLine($" Profile status:");
                     Debug.WriteLine($"   Basic profile incomplete: {isProfileIncomplete}");
                     Debug.WriteLine($"   Music profile empty: {isMusicProfileEmpty}");
 
@@ -109,7 +109,7 @@ public class SpotifyAuthHandler
                     {
                         if (isProfileIncomplete)
                         {
-                            Debug.WriteLine("🚀 Navigating to CompleteProfilePage...");
+                            Debug.WriteLine(" Navigating to CompleteProfilePage...");
                             await SafeDisplayAlert(
                                 "Welcome to SpotiLove!",
                                 $"Hi {userResponse.User.Name}! Let's set up your profile."
@@ -127,7 +127,7 @@ public class SpotifyAuthHandler
                         }
                         else if (isMusicProfileEmpty)
                         {
-                            Debug.WriteLine("🚀 Navigating to ArtistSelectionPage...");
+                            Debug.WriteLine(" Navigating to ArtistSelectionPage...");
                             await SafeDisplayAlert(
                                 "Set Up Your Music Profile",
                                 "Let's find your music taste!"
@@ -143,7 +143,7 @@ public class SpotifyAuthHandler
                         }
                         else
                         {
-                            Debug.WriteLine("🚀 Navigating to MainPage...");
+                            Debug.WriteLine(" Navigating to MainPage...");
                             string message = $"Welcome back, {userResponse.User.Name}!";
                             await SafeDisplayAlert("Success", message);
                             await SafeNavigate(async () =>
@@ -160,31 +160,31 @@ public class SpotifyAuthHandler
                         }
                     });
 
-                    Debug.WriteLine("✅ Navigation complete");
+                    Debug.WriteLine(" Navigation complete");
                 }
                 else
                 {
-                    Debug.WriteLine("❌ User data was null after deserialization");
+                    Debug.WriteLine(" User data was null after deserialization");
                     await SafeDisplayAlert("Error", "Failed to load user profile");
                 }
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"❌ API error: {response.StatusCode}");
-                Debug.WriteLine($"❌ Error content: {errorContent}");
+                Debug.WriteLine($" API error: {response.StatusCode}");
+                Debug.WriteLine($" Error content: {errorContent}");
                 await SafeDisplayAlert("Error", "Failed to fetch user profile from server");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Exception in HandleSpotifyCallback: {ex.Message}");
-            Debug.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            Debug.WriteLine($" Exception in HandleSpotifyCallback: {ex.Message}");
+            Debug.WriteLine($" Stack trace: {ex.StackTrace}");
             await SafeDisplayAlert("Error", $"Failed to complete Spotify authentication: {ex.Message}");
         }
     }
 
-    // ✅ Safe method to display alerts without depending on Shell.Current
+    //  Safe method to display alerts without depending on Shell.Current
     private static async Task SafeDisplayAlert(string title, string message)
     {
         try
@@ -199,12 +199,12 @@ public class SpotifyAuthHandler
             }
             else
             {
-                Debug.WriteLine($"⚠️ Cannot display alert - no main page available: {title}: {message}");
+                Debug.WriteLine($"Cannot display alert - no main page available: {title}: {message}");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Failed to display alert: {ex.Message}");
+            Debug.WriteLine($" Failed to display alert: {ex.Message}");
         }
     }
 
@@ -217,7 +217,7 @@ public class SpotifyAuthHandler
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Navigation error: {ex.Message}");
+            Debug.WriteLine($" Navigation error: {ex.Message}");
             // Fallback: Try to set a new AppShell as MainPage
             try
             {
@@ -225,7 +225,7 @@ public class SpotifyAuthHandler
             }
             catch (Exception fallbackEx)
             {
-                Debug.WriteLine($"❌ Fallback navigation also failed: {fallbackEx.Message}");
+                Debug.WriteLine($" Fallback navigation also failed: {fallbackEx.Message}");
             }
         }
     }

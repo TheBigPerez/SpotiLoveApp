@@ -38,7 +38,7 @@ public partial class SongSelectionPage : ContentPage
 
             foreach (var artistName in _selectedArtists)
             {
-                Console.WriteLine($"📡 Fetching tracks for artist: {artistName}");
+                Console.WriteLine($" Fetching tracks for artist: {artistName}");
 
                 var response = await _httpClient.GetAsync(
                     $"{_apiBaseUrl}/spotify/artist-top-tracks?artistName={Uri.EscapeDataString(artistName)}&limit=5"
@@ -56,7 +56,7 @@ public partial class SongSelectionPage : ContentPage
 
                     if (songs != null)
                     {
-                        Console.WriteLine($"✅ Received {songs.Count} songs for {artistName}");
+                        Console.WriteLine($" Received {songs.Count} songs for {artistName}");
 
                         foreach (var song in songs)
                         {
@@ -80,17 +80,17 @@ public partial class SongSelectionPage : ContentPage
                 }
                 else
                 {
-                    Console.WriteLine($"❌ Failed to fetch tracks for {artistName}: {response.StatusCode}");
+                    Console.WriteLine($" Failed to fetch tracks for {artistName}: {response.StatusCode}");
                 }
 
                 await Task.Delay(100);
             }
 
-            Console.WriteLine($"✅ Total songs loaded: {_songs.Count}");
+            Console.WriteLine($" Total songs loaded: {_songs.Count}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error loading songs: {ex.Message}");
+            Console.WriteLine($" Error loading songs: {ex.Message}");
             await DisplayAlert("Error", $"Failed to load songs: {ex.Message}", "OK");
         }
         finally
@@ -276,7 +276,7 @@ public partial class SongSelectionPage : ContentPage
             }
 
             // 3️⃣ No previews available - ask user what to do
-            Console.WriteLine($"⚠️ No previews available for: {song.Title}");
+            Console.WriteLine($"No previews available for: {song.Title}");
             var action = await DisplayActionSheet(
                 "No Preview Available",
                 "Cancel",
@@ -296,7 +296,7 @@ public partial class SongSelectionPage : ContentPage
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Playback error: {ex.Message}");
+            Console.WriteLine($" Playback error: {ex.Message}");
             await DisplayAlert("Error", $"Playback failed: {ex.Message}", "OK");
         }
     }
@@ -316,7 +316,7 @@ public partial class SongSelectionPage : ContentPage
 
             _currentPlayer.MediaOpened += (s, args) =>
             {
-                Console.WriteLine($"✅ {source} preview opened successfully");
+                Console.WriteLine($" {source} preview opened successfully");
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     song.IsPlaying = true;
@@ -338,7 +338,7 @@ public partial class SongSelectionPage : ContentPage
 
             _currentPlayer.MediaFailed += async (s, args) =>
             {
-                Console.WriteLine($"❌ {source} preview failed: {args.ErrorMessage}");
+                Console.WriteLine($" {source} preview failed: {args.ErrorMessage}");
 
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
@@ -368,7 +368,7 @@ public partial class SongSelectionPage : ContentPage
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Exception playing {source}: {ex.Message}");
+            Console.WriteLine($" Exception playing {source}: {ex.Message}");
             throw;
         }
     }
@@ -393,7 +393,7 @@ public partial class SongSelectionPage : ContentPage
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to open YouTube: {ex.Message}");
+            Console.WriteLine($" Failed to open YouTube: {ex.Message}");
             await DisplayAlert("Error", $"Could not open YouTube: {ex.Message}", "OK");
         }
     }
@@ -410,7 +410,7 @@ public partial class SongSelectionPage : ContentPage
 
             if (opened)
             {
-                Console.WriteLine($"✅ Opened Spotify search: {song.Title}");
+                Console.WriteLine($" Opened Spotify search: {song.Title}");
             }
             else
             {
@@ -419,7 +419,7 @@ public partial class SongSelectionPage : ContentPage
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to open Spotify: {ex.Message}");
+            Console.WriteLine($" Failed to open Spotify: {ex.Message}");
             await DisplayAlert("Error", $"Could not open Spotify: {ex.Message}", "OK");
         }
     }

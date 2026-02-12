@@ -22,7 +22,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnCreate(savedInstanceState);
 
-        Diag.WriteLine("🚀 MainActivity OnCreate called");
+        Diag.WriteLine(" MainActivity OnCreate called");
 
         // Handle deep link if launched via intent
         HandleIntent(Intent);
@@ -49,7 +49,7 @@ public class MainActivity : MauiAppCompatActivity
         if (intent?.Data != null)
         {
             var uri = intent.Data.ToString();
-            Diag.WriteLine($"✅ Received deep link: {uri}");
+            Diag.WriteLine($" Received deep link: {uri}");
 
             // Store the URI to be processed when app is ready
             Preferences.Set("pending_deep_link", uri);
@@ -69,19 +69,19 @@ public class MainActivity : MauiAppCompatActivity
                 }
                 catch (Exception ex)
                 {
-                    Diag.WriteLine($"❌ Error handling deep link in MainActivity: {ex.Message}");
+                    Diag.WriteLine($" Error handling deep link in MainActivity: {ex.Message}");
                 }
             });
         }
         else
         {
-            Diag.WriteLine("⚠️ Intent has no data");
+            Diag.WriteLine("Intent has no data");
 
             // Check for pending deep link
             var pendingLink = Preferences.Get("pending_deep_link", null);
             if (!string.IsNullOrEmpty(pendingLink))
             {
-                Diag.WriteLine($"📋 Found pending deep link: {pendingLink}");
+                Diag.WriteLine($" Found pending deep link: {pendingLink}");
                 Preferences.Remove("pending_deep_link");
 
                 MainThread.BeginInvokeOnMainThread(async () =>

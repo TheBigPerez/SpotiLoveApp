@@ -17,7 +17,7 @@ public partial class Login : ContentPage
         InitializeComponent();
         _httpClient = new HttpClient { BaseAddress = new Uri(API_BASE_URL) };
 
-        // ✅ Check for pending deep links when login page loads
+        //  Check for pending deep links when login page loads
         CheckForPendingDeepLink();
     }
 
@@ -30,14 +30,14 @@ public partial class Login : ContentPage
             var pendingLink = Preferences.Get("pending_deep_link", null);
             if (!string.IsNullOrEmpty(pendingLink))
             {
-                Debug.WriteLine($"📋 Processing pending deep link: {pendingLink}");
+                Debug.WriteLine($" Processing pending deep link: {pendingLink}");
                 Preferences.Remove("pending_deep_link");
                 await SpotifyAuthHandler.HandleSpotifyCallback(pendingLink);
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Error checking pending deep link: {ex.Message}");
+            Debug.WriteLine($" Error checking pending deep link: {ex.Message}");
         }
     }
 
@@ -164,13 +164,6 @@ public partial class Login : ContentPage
             var spotifyLoginUrl = $"{API_BASE_URL}/login";
             Debug.WriteLine($"🔗 Opening URL: {spotifyLoginUrl}");
 
-            // Show a message to the user
-            await DisplayAlert(
-                "Spotify Login",
-                "You'll be redirected to Spotify to authorize. After authorizing, you'll be redirected back to the app.",
-                "Continue"
-            );
-
             var browserOptions = new BrowserLaunchOptions
             {
                 LaunchMode = BrowserLaunchMode.SystemPreferred,
@@ -180,17 +173,26 @@ public partial class Login : ContentPage
             };
 
             var result = await Browser.OpenAsync(spotifyLoginUrl, browserOptions);
-            Debug.WriteLine($"✅ Browser.OpenAsync result: {result}");
+            Debug.WriteLine($" Browser.OpenAsync result: {result}");
 
             if (!result)
             {
-                Debug.WriteLine("❌ Browser failed to open");
+                Debug.WriteLine(" Browser failed to open");
                 await DisplayAlert("Error", "Could not open Spotify login page.", "OK");
+            }
+            if (Shell.Current != null)
+            {
+                await Shell.Current.GoToAsync("//MainPage");
+            }
+            else
+            {
+                Debug.WriteLine("Shell.Current is null, creating new AppShell");
+                Application.Current.MainPage = new AppShell();
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Spotify login error: {ex.Message}");
+            Debug.WriteLine($" Spotify login error: {ex.Message}");
             await DisplayAlert("Error", $"Failed to open Spotify login: {ex.Message}", "OK");
         }
     }
@@ -202,7 +204,7 @@ public partial class Login : ContentPage
             // Create a test URI that mimics what Spotify would send back
             var testUrl = "spotilove://auth/success?token=test-token-123&userId=00000000-0000-0000-0000-000000000001&isNewUser=false&name=Test%20User";
 
-            Debug.WriteLine($"🧪 Testing deep link: {testUrl}");
+            Debug.WriteLine($"Testing deep link: {testUrl}");
 
             // Directly call the handler instead of trying to open the URL
             await SpotifyAuthHandler.HandleSpotifyCallback(testUrl);
@@ -278,13 +280,13 @@ public partial class Login : ContentPage
             }
             else
             {
-                Debug.WriteLine("⚠️ Shell.Current is null, creating new AppShell");
+                Debug.WriteLine("Shell.Current is null, creating new AppShell");
                 Application.Current.MainPage = new AppShell();
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"❌ Navigation error: {ex.Message}");
+            Debug.WriteLine($" Navigation error: {ex.Message}");
             Application.Current.MainPage = new NavigationPage(new MainPage());
         }
     }

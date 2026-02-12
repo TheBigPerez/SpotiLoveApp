@@ -1,3 +1,4 @@
+ï»¿using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -154,7 +155,7 @@ public partial class SignUp : ContentPage
                         $"Welcome to SpotiLove, {registerResponse.User.Name}! Your account has been created.",
                         "Get Started");
 
-                    await Shell.Current.GoToAsync("//ArtistSelectionPage");
+                    await Navigation.PushAsync(new ArtistSelectionPage());
                 }
                 else
                 {
@@ -298,6 +299,16 @@ public partial class SignUp : ContentPage
         {
             var spotifyLoginUrl = $"{API_BASE_URL}/login";
             await Browser.OpenAsync(spotifyLoginUrl, BrowserLaunchMode.SystemPreferred);
+            Thread.Sleep(3000);
+            if (Shell.Current != null)
+            {
+                await Shell.Current.GoToAsync("//MainPage");
+            }
+            else
+            {
+                Debug.WriteLine("Shell.Current is null, creating new AppShell");
+                Application.Current.MainPage = new AppShell();
+            }
         }
         catch (Exception ex)
         {
@@ -319,10 +330,10 @@ public partial class SignUp : ContentPage
     {
         await DisplayAlert("Terms of Service",
             "By using SpotiLove, you agree to our Terms of Service.\n\n" +
-            "• You must be 18 years or older\n" +
-            "• You agree to use the service respectfully\n" +
-            "• Your account is personal and non-transferable\n" +
-            "• We reserve the right to terminate accounts that violate our terms\n\n" +
+            "â€¢ You must be 18 years or older\n" +
+            "â€¢ You agree to use the service respectfully\n" +
+            "â€¢ Your account is personal and non-transferable\n" +
+            "â€¢ We reserve the right to terminate accounts that violate our terms\n\n" +
             "For full terms, visit our website.",
             "OK");
     }
@@ -331,11 +342,11 @@ public partial class SignUp : ContentPage
     {
         await DisplayAlert("Privacy Policy",
             "Your privacy is important to us.\n\n" +
-            "• We encrypt your personal data\n" +
-            "• We never sell your information\n" +
-            "• You control your profile visibility\n" +
-            "• You can delete your account anytime\n" +
-            "• We use cookies to improve your experience\n\n" +
+            "â€¢ We encrypt your personal data\n" +
+            "â€¢ We never sell your information\n" +
+            "â€¢ You control your profile visibility\n" +
+            "â€¢ You can delete your account anytime\n" +
+            "â€¢ We use cookies to improve your experience\n\n" +
             "For full privacy policy, visit our website.",
             "OK");
     }

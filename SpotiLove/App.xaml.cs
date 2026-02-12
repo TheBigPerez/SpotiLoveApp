@@ -20,7 +20,7 @@ namespace SpotiLove
         {
             try
             {
-                Debug.WriteLine("🚀 App OnStart called");
+                Debug.WriteLine(" App OnStart called");
 
                 // Check for saved session
                 var userId = await SecureStorage.GetAsync("user_id");
@@ -36,17 +36,17 @@ namespace SpotiLove
                         Email = email
                     };
 
-                    Debug.WriteLine($"✅ Restored user session: Id={id}, Name={name}");
+                    Debug.WriteLine($" Restored user session: Id={id}, Name={name}");
                     await ValidateUserProfile(id, name, "https://spotilove.danielnaz.com");
                 }
                 else
                 {
-                    Debug.WriteLine("⚠️ No saved user session found");
+                    Debug.WriteLine("No saved user session found");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ OnStart restore error: {ex.Message}");
+                Debug.WriteLine($" OnStart restore error: {ex.Message}");
             }
         }
 
@@ -64,7 +64,7 @@ namespace SpotiLove
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"❌ User not found in database (Status: {response.StatusCode})");
+                    Debug.WriteLine($" User not found in database (Status: {response.StatusCode})");
                     await HandleInvalidUser();
                     return;
                 }
@@ -76,7 +76,7 @@ namespace SpotiLove
 
                 if (userResponse?.User == null)
                 {
-                    Debug.WriteLine("❌ Failed to deserialize user data");
+                    Debug.WriteLine(" Failed to deserialize user data");
                     await HandleInvalidUser();
                     return;
                 }
@@ -95,7 +95,7 @@ namespace SpotiLove
 
                 if (isProfileIncomplete)
                 {
-                    Debug.WriteLine("⚠️ Basic profile incomplete");
+                    Debug.WriteLine("Basic profile incomplete");
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
                         if (MainPage?.Navigation != null)
@@ -108,7 +108,7 @@ namespace SpotiLove
                 }
                 else if (isMusicProfileEmpty)
                 {
-                    Debug.WriteLine("⚠️ Music profile empty");
+                    Debug.WriteLine("Music profile empty");
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
                         if (MainPage != null)
@@ -128,12 +128,12 @@ namespace SpotiLove
                 }
                 else
                 {
-                    Debug.WriteLine("✅ Profile complete");
+                    Debug.WriteLine(" Profile complete");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ Profile validation error: {ex.Message}");
+                Debug.WriteLine($" Profile validation error: {ex.Message}");
             }
         }
 
@@ -193,7 +193,7 @@ namespace SpotiLove
                 {
                     if (uri.AbsolutePath.Contains("success") || uri.Query.Contains("token"))
                     {
-                        Debug.WriteLine("✅ Success callback - processing...");
+                        Debug.WriteLine(" Success callback - processing...");
                         await SpotifyAuthHandler.HandleSpotifyCallback(uri.ToString());
                     }
                     else if (uri.AbsolutePath.Contains("error"))
@@ -210,7 +210,7 @@ namespace SpotiLove
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ Error handling deep link: {ex.Message}");
+                Debug.WriteLine($" Error handling deep link: {ex.Message}");
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     await MainPage.DisplayAlert("Error", $"Failed to process authentication: {ex.Message}", "OK");

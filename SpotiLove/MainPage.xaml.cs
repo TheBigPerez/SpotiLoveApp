@@ -26,7 +26,7 @@ public partial class MainPage : ContentPage
 
             if (UserData.Current.Id == Guid.Empty)
             {
-                System.Diagnostics.Debug.WriteLine("❌ UserData.Current.Id is empty");
+                System.Diagnostics.Debug.WriteLine(" UserData.Current.Id is empty");
                 await HandleInvalidSession();
             }
             else
@@ -41,7 +41,7 @@ public partial class MainPage : ContentPage
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine("❌ UserData.Current is null");
+            System.Diagnostics.Debug.WriteLine(" UserData.Current is null");
             await HandleInvalidSession();
         }
     }
@@ -60,7 +60,7 @@ public partial class MainPage : ContentPage
 
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ User not found in database");
+                System.Diagnostics.Debug.WriteLine($" User not found in database");
                 await HandleInvalidSession();
                 return false;
             }
@@ -72,7 +72,7 @@ public partial class MainPage : ContentPage
 
             if (userResponse?.User == null)
             {
-                System.Diagnostics.Debug.WriteLine("❌ Failed to deserialize user data");
+                System.Diagnostics.Debug.WriteLine(" Failed to deserialize user data");
                 await HandleInvalidSession();
                 return false;
             }
@@ -86,7 +86,7 @@ public partial class MainPage : ContentPage
 
             if (isBasicProfileIncomplete)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ Basic profile incomplete");
+                System.Diagnostics.Debug.WriteLine("Basic profile incomplete");
                 await DisplayAlert(
                     "Complete Your Profile",
                     "Please complete your basic profile information first.",
@@ -106,7 +106,7 @@ public partial class MainPage : ContentPage
 
             if (isMusicProfileEmpty)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ Music profile empty");
+                System.Diagnostics.Debug.WriteLine("Music profile empty");
                 await DisplayAlert(
                     "Set Up Your Music Profile",
                     "Let's find your music taste to match you with compatible people!",
@@ -116,12 +116,12 @@ public partial class MainPage : ContentPage
                 return false;
             }
 
-            System.Diagnostics.Debug.WriteLine("✅ Profile complete - proceeding to load swipes");
+            System.Diagnostics.Debug.WriteLine(" Profile complete - proceeding to load swipes");
             return true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"❌ Profile validation error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($" Profile validation error: {ex.Message}");
             await DisplayAlert("Error", "Failed to validate profile. Please try again.", "OK");
             return false;
         }
@@ -153,7 +153,7 @@ public partial class MainPage : ContentPage
 
             if (currentDTO == null || currentDTO.Id == Guid.Empty)
             {
-                System.Diagnostics.Debug.WriteLine("❌ Invalid currentDTO");
+                System.Diagnostics.Debug.WriteLine(" Invalid currentDTO");
                 await HandleInvalidSession();
                 return;
             }
@@ -161,16 +161,16 @@ public partial class MainPage : ContentPage
             System.Diagnostics.Debug.WriteLine($"🔄 Calling SpotiLoveAPIService.GetSwipes...");
             test = await SpotiLoveAPIService.GetSwipes(currentDTO);
 
-            System.Diagnostics.Debug.WriteLine($"📊 GetSwipes returned: {(test == null ? "null" : $"{test.Count} users")}");
+            System.Diagnostics.Debug.WriteLine($" GetSwipes returned: {(test == null ? "null" : $"{test.Count} users")}");
 
             if (test != null && test.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"✅ Found {test.Count} users, displaying first user");
+                System.Diagnostics.Debug.WriteLine($" Found {test.Count} users, displaying first user");
                 await UpdateUserDisplay(test[0]);
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ No users returned from API");
+                System.Diagnostics.Debug.WriteLine("No users returned from API");
 
                 if (NameLabel != null)
                     NameLabel.Text = "No users available";
@@ -182,7 +182,7 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"❌ Test error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($" Test error: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             await DisplayAlert("Error", $"Failed to load users: {ex.Message}", "OK");
         }
