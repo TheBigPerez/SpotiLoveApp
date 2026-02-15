@@ -47,7 +47,7 @@ public partial class SongSelectionPage : ContentPage
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"📥 Response JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
+                    Console.WriteLine($"Response JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
 
                     var songs = JsonSerializer.Deserialize<List<SpotifySong>>(json, new JsonSerializerOptions
                     {

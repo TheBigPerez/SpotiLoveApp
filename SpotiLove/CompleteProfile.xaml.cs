@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 
 namespace SpotiLove;
@@ -76,7 +76,6 @@ public partial class CompleteProfilePage : ContentPage
             ContinueButton.IsEnabled = false;
             ContinueButton.Text = "Updating profile...";
 
-            // Map picker selections to API values
             var sexualOrientation = SexualOrientationPicker.SelectedItem.ToString() switch
             {
                 "Men" => "Male",
@@ -85,7 +84,6 @@ public partial class CompleteProfilePage : ContentPage
                 _ => "Both"
             };
 
-            // Update user profile via API
             var profileUpdate = new
             {
                 age = age,
@@ -93,6 +91,11 @@ public partial class CompleteProfilePage : ContentPage
                 sexualOrientation = sexualOrientation,
                 bio = string.IsNullOrWhiteSpace(BioEditor.Text) ? null : BioEditor.Text.Trim()
             };
+
+            System.Diagnostics.Debug.WriteLine($"Sending profile update:");
+            System.Diagnostics.Debug.WriteLine($"Age: {profileUpdate.age}");
+            System.Diagnostics.Debug.WriteLine($"Gender: {profileUpdate.gender}");
+            System.Diagnostics.Debug.WriteLine($"SexualOrientation: {profileUpdate.sexualOrientation}");
 
             var content = new StringContent(
                 JsonSerializer.Serialize(profileUpdate),
@@ -105,27 +108,37 @@ public partial class CompleteProfilePage : ContentPage
                 content
             );
 
+            var responseBody = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
+            System.Diagnostics.Debug.WriteLine($"Response Body: {responseBody}");
+
             if (response.IsSuccessStatusCode)
             {
-                // Update local UserData
+                //VERIFY the update worked by fetching the user again
+                var verifyResponse = await _httpClient.GetAsync($"{_apiBaseUrl}/users/{_userId}");
+                if (verifyResponse.IsSuccessStatusCode)
+                {
+                    var verifyJson = await verifyResponse.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Verified profile: {verifyJson}");
+                }
+
                 UserData.Current.Age = age;
 
-                // Navigate to Artist Selection
                 await DisplayAlert("Success", "Profile updated! Let's find your music taste.", "Continue");
                 await Navigation.PushAsync(new ArtistSelectionPage());
             }
             else
             {
-                var error = await response.Content.ReadAsStringAsync();
-                await DisplayAlert("Error", $"Failed to update profile: {error}", "OK");
+                System.Diagnostics.Debug.WriteLine($"Profile update failed!");
+                await DisplayAlert("Error", $"Failed to update profile: {responseBody}", "OK");
                 ContinueButton.IsEnabled = true;
                 ContinueButton.Text = "Continue to Music Selection";
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
-            ContinueButton.IsEnabled = true;
+            System.Diagnostics.Debug.WriteLine($"Exception: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
             ContinueButton.Text = "Continue to Music Selection";
         }
     }

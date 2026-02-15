@@ -32,11 +32,11 @@ public partial class MainPage : ContentPage
             else
             {
                 // Validate profile before loading swipes
-                var isValid = await ValidateUserProfileAsync(UserData.Current.Id);
-                if (isValid)
-                {
+                //var isValid = await ValidateUserProfileAsync(UserData.Current.Id);
+                //if (isValid)
+                //{
                     await Test(UserData.Current.ToDto());
-                }
+                //}
             }
         }
         else
