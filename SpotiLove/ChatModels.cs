@@ -14,7 +14,6 @@ public class ChatViewModel : BindableObject
     private bool _hasUnread;
     private int _unreadCount;
     private bool _isOnline;
-
     public Guid UserId
     {
         get => _userId;
