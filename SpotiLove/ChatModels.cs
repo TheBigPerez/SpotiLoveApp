@@ -20,7 +20,6 @@ public class ChatViewModel : BindableObject
         get => _userId;
         set { _userId = value; OnPropertyChanged(); }
     }
-
     public string Name
     {
         get => _name;
