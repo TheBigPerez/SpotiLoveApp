@@ -36,7 +36,6 @@ public class ChatViewModel : BindableObject
         get => _lastMessage;
         set { _lastMessage = value; OnPropertyChanged(); }
     }
-
     public string TimeStamp
     {
         get => _timeStamp;
