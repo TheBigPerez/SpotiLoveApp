@@ -17,8 +17,6 @@ public partial class SongSelectionPage : ContentPage
     private List<SongViewModel> _allSongs = new();
     private ObservableCollection<SongViewModel> _displayedSongs = new();
     private List<SongViewModel> _selectedSongs = new();
-
-    private MediaElement? _mediaElement;
     private SongViewModel? _currentlyPlayingSong;
 
     public SongSelectionPage(Guid userId, List<string> selectedArtists)
@@ -32,55 +30,25 @@ public partial class SongSelectionPage : ContentPage
         NowPlayingBar.IsVisible = false;
 
         _ = LoadSongsFromArtists();
+        AudioPlayer.MediaEnded += (s, e) =>
+      MainThread.BeginInvokeOnMainThread(StopCurrentSong);
+        AudioPlayer.MediaFailed += (s, e) =>
+            MainThread.BeginInvokeOnMainThread(() => {
+                StopCurrentSong();
+                _ = DisplayAlert("Playback Failed", "Could not play preview.", "OK");
+            });
     }
 
     // =========================================================
     // Audio — single reusable MediaElement in visual tree
     // =========================================================
 
-    private MediaElement GetOrCreateMediaElement()
-    {
-        if (_mediaElement != null) return _mediaElement;
 
-        _mediaElement = new MediaElement
-        {
-            IsVisible = false,
-            HeightRequest = 0,
-            WidthRequest = 0,
-            ShouldAutoPlay = false,
-            Volume = 0.8
-        };
-
-        _mediaElement.MediaEnded += (s, e) =>
-            MainThread.BeginInvokeOnMainThread(StopCurrentSong);
-
-        // Use lambda to avoid needing MediaFailedEventArgs type reference directly
-        _mediaElement.MediaFailed += (s, e) =>
-        {
-            Console.WriteLine("Media playback failed");
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                StopCurrentSong();
-                _ = DisplayAlert("Playback Failed", "Could not play preview. The URL may have expired.", "OK");
-            });
-        };
-
-        if (Content is Grid grid)
-        {
-            Grid.SetRowSpan(_mediaElement, 10);
-            grid.Children.Add(_mediaElement);
-        }
-
-        return _mediaElement;
-    }
 
     private void StopCurrentSong()
     {
-        if (_mediaElement != null)
-        {
-            _mediaElement.Stop();
-            _mediaElement.Source = null;
-        }
+        AudioPlayer.Stop();
+        AudioPlayer.Source = null;
 
         if (_currentlyPlayingSong != null)
         {
@@ -107,7 +75,7 @@ public partial class SongSelectionPage : ContentPage
         {
             bool openYT = await DisplayAlert(
                 "No Preview Available",
-                $"No 30-second preview for \"{song.Title}\". Open YouTube?",
+                $"No preview for \"{song.Title}\". Open YouTube?",
                 "Open YouTube", "Cancel");
             if (openYT) await SearchOnYouTube(song);
             return;
@@ -115,9 +83,8 @@ public partial class SongSelectionPage : ContentPage
 
         try
         {
-            var player = GetOrCreateMediaElement();
-            player.Source = MediaSource.FromUri(previewUrl);
-            player.Play();
+            AudioPlayer.Source = MediaSource.FromUri(previewUrl);
+            AudioPlayer.Play();
 
             song.IsPlaying = true;
             song.PlayButtonText = "⏸";
@@ -127,8 +94,6 @@ public partial class SongSelectionPage : ContentPage
             NowPlayingArtist.Text = song.Artist;
             NowPlayingBar.IsVisible = true;
             NextButton.IsVisible = false;
-
-            Console.WriteLine($"▶ Playing: {song.Title} ({(song.DeezerPreviewUrl != null ? "Deezer" : "Spotify")})");
         }
         catch (Exception ex)
         {
