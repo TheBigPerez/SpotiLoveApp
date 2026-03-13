@@ -1,5 +1,6 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace SpotiLove;
 
@@ -14,9 +15,9 @@ public partial class Chats : ContentPage
     {
         InitializeComponent();
         _httpClient = new HttpClient();
+        _httpClient.Timeout = TimeSpan.FromSeconds(15);
         ChatsCollection.ItemsSource = _filteredChats;
 
-        // Add value converters to resources
         Resources.Add("BoolToColorConverter", new BoolToColorConverter());
         Resources.Add("UnreadMessageColorConverter", new UnreadMessageColorConverter());
         Resources.Add("UnreadMessageFontConverter", new UnreadMessageFontConverter());
@@ -38,52 +39,16 @@ public partial class Chats : ContentPage
                 return;
             }
 
-            Debug.WriteLine($"Loading chats for user: {UserData.Current.Id}");
+            Debug.WriteLine($"Loading chats/matches for user: {UserData.Current.Id}");
 
-            // Get user's matches
-            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/matches/{UserData.Current.Id}");
+            // ── 1. Load existing conversations (users we've messaged) ──────────
+            await LoadConversations();
 
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync();
-                var matchesResponse = System.Text.Json.JsonSerializer.Deserialize<MatchesResponse>(
-                    json,
-                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                );
+            // ── 2. Also load matches who haven't been messaged yet ─────────────
+            await LoadMatchesWithoutConversation();
 
-                _allChats.Clear();
-
-                if (matchesResponse?.Matches != null && matchesResponse.Matches.Any())
-                {
-                    foreach (var match in matchesResponse.Matches)
-                    {
-                        _allChats.Add(new ChatViewModel
-                        {
-                            UserId = match.Id,
-                            Name = match.Name ?? "Unknown User",
-                            ProfileImage = match.Images?.FirstOrDefault() ?? "default_user.png",
-                            LastMessage = "You matched! Say hi 👋",
-                            TimeStamp = "Now",
-                            HasUnread = false,
-                            UnreadCount = 0,
-                            IsOnline = false
-                        });
-                    }
-
-                    EmptyStateView.IsVisible = false;
-                }
-                else
-                {
-                    EmptyStateView.IsVisible = true;
-                }
-
-                UpdateFilteredChats();
-            }
-            else
-            {
-                Debug.WriteLine($"Failed to load matches: {response.StatusCode}");
-                EmptyStateView.IsVisible = true;
-            }
+            UpdateFilteredChats(ChatSearchBar.Text);
+            EmptyStateView.IsVisible = !_allChats.Any();
         }
         catch (Exception ex)
         {
@@ -92,60 +57,172 @@ public partial class Chats : ContentPage
         }
     }
 
-    private void UpdateFilteredChats()
+    private async Task LoadConversations()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"{_apiBaseUrl}/chats/{UserData.Current!.Id}/conversations"
+            );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"Conversations endpoint returned: {response.StatusCode}");
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<ConversationsResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            _allChats.Clear();
+
+            if (result?.Conversations != null)
+            {
+                foreach (var conv in result.Conversations)
+                {
+                    _allChats.Add(new ChatViewModel
+                    {
+                        UserId = conv.UserId,
+                        Name = conv.Name ?? "Unknown",
+                        ProfileImage = conv.ProfileImage ?? "default_user.png",
+                        LastMessage = conv.LastMessage ?? "Say hi 👋",
+                        TimeStamp = FormatTimestamp(conv.LastMessageTime),
+                        HasUnread = conv.UnreadCount > 0,
+                        UnreadCount = conv.UnreadCount,
+                        IsOnline = false
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"LoadConversations error: {ex.Message}");
+        }
+    }
+
+    private async Task LoadMatchesWithoutConversation()
+    {
+        try
+        {
+            // The matches endpoint returns { Matches: [...], Count: N, Message: "" }
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/matches/{UserData.Current!.Id}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"Matches endpoint returned: {response.StatusCode}");
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<MatchesApiResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result?.Matches == null) return;
+
+            // Only add matches that don't already have a conversation entry
+            var existingUserIds = _allChats.Select(c => c.UserId).ToHashSet();
+
+            foreach (var match in result.Matches)
+            {
+                if (!existingUserIds.Contains(match.Id))
+                {
+                    _allChats.Add(new ChatViewModel
+                    {
+                        UserId = match.Id,
+                        Name = match.Name ?? "Unknown",
+                        ProfileImage = match.Images?.FirstOrDefault() ?? "default_user.png",
+                        LastMessage = "You matched! Say hi 👋",
+                        TimeStamp = "New",
+                        HasUnread = false,
+                        UnreadCount = 0,
+                        IsOnline = false
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"LoadMatchesWithoutConversation error: {ex.Message}");
+        }
+    }
+
+    private string FormatTimestamp(DateTime? dt)
+    {
+        if (dt == null) return "";
+        var local = dt.Value.ToLocalTime();
+        if (local.Date == DateTime.Today) return local.ToString("h:mm tt");
+        if (local.Date == DateTime.Today.AddDays(-1)) return "Yesterday";
+        return local.ToString("MMM d");
+    }
+
+    private void UpdateFilteredChats(string? searchText = null)
     {
         _filteredChats.Clear();
-        foreach (var chat in _allChats)
-        {
+
+        var source = string.IsNullOrWhiteSpace(searchText)
+            ? _allChats
+            : _allChats.Where(c =>
+                c.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                c.LastMessage.Contains(searchText, StringComparison.OrdinalIgnoreCase));
+
+        foreach (var chat in source)
             _filteredChats.Add(chat);
-        }
+
+        EmptyStateView.IsVisible = !_filteredChats.Any();
     }
 
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
     {
-        var searchText = e.NewTextValue?.ToLower() ?? "";
-
-        _filteredChats.Clear();
-
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            foreach (var chat in _allChats)
-            {
-                _filteredChats.Add(chat);
-            }
-        }
-        else
-        {
-            foreach (var chat in _allChats.Where(c =>
-                c.Name.ToLower().Contains(searchText) ||
-                c.LastMessage.ToLower().Contains(searchText)))
-            {
-                _filteredChats.Add(chat);
-            }
-        }
-
-        EmptyStateView.IsVisible = !_filteredChats.Any();
+        UpdateFilteredChats(e.NewTextValue);
     }
 
     private async void OnChatTapped(object sender, TappedEventArgs e)
     {
         if (e.Parameter is ChatViewModel chat)
         {
-            Debug.WriteLine($"Opening chat with: {chat.Name}");
-
-            // Mark as read
             chat.HasUnread = false;
             chat.UnreadCount = 0;
-
-            // Navigate to conversation page
             await Navigation.PushAsync(new Conversation(chat));
         }
     }
 
     private async void OnNewChatClicked(object sender, EventArgs e)
     {
-        // TODO: Implement new chat functionality
-        // This could open a page showing all matches
-        await DisplayAlert("New Chat", "This feature will let you start a conversation with your matches", "OK");
+        await DisplayAlert("Matches", "Only your mutual matches appear here. Keep swiping to find more!", "OK");
+    }
+
+    // =========================================================
+    // API Response Models
+    // =========================================================
+
+    // Matches endpoint: { Matches: [...], Count: N, Message: "" }
+    private class MatchesApiResponse
+    {
+        public List<UserDto>? Matches { get; set; }
+        public int Count { get; set; }
+        public string? Message { get; set; }
+    }
+
+    // Conversations endpoint: { success: true, conversations: [...] }
+    private class ConversationsResponse
+    {
+        public bool Success { get; set; }
+        public List<ConversationDto>? Conversations { get; set; }
+    }
+
+    private class ConversationDto
+    {
+        public Guid UserId { get; set; }
+        public string? Name { get; set; }
+        public string? ProfileImage { get; set; }
+        public string? LastMessage { get; set; }
+        public DateTime? LastMessageTime { get; set; }
+        public int UnreadCount { get; set; }
+        public bool IsOnline { get; set; }
     }
 }

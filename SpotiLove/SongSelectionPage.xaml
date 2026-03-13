@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="SpotiLove.SongSelectionPage"
              BackgroundColor="#121212">
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="20">
+
+    <!-- Hidden MediaElement for audio playback (must be in visual tree to work) -->
+    <ContentPage.Resources>
+        <ResourceDictionary/>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="20">
 
         <!-- Header -->
-        <VerticalStackLayout Grid.Row="0" Spacing="10" Margin="0,20,0,30">
+        <VerticalStackLayout Grid.Row="0" Spacing="10" Margin="0,20,0,15">
             <Label
                 Text="Choose Your Favorite Songs"
                 FontSize="28"
@@ -33,7 +40,7 @@
             BackgroundColor="#212121"
             CornerRadius="10"
             Padding="15"
-            Margin="0,0,0,20"
+            Margin="0,0,0,15"
             HasShadow="False">
             <FlexLayout Direction="Row" JustifyContent="SpaceBetween" AlignItems="Center">
                 <Label Text="🎤 Artists ✓" FontSize="14" TextColor="#1db954"/>
@@ -41,21 +48,38 @@
             </FlexLayout>
         </Frame>
 
+        <!-- Search Bar -->
+        <Border
+            Grid.Row="2"
+            BackgroundColor="#212121"
+            Stroke="#535353"
+            StrokeThickness="1"
+            StrokeShape="RoundRectangle 25"
+            Margin="0,0,0,15">
+            <SearchBar
+                x:Name="SongSearchBar"
+                Placeholder="Search songs..."
+                PlaceholderColor="#b3b3b3"
+                TextColor="White"
+                BackgroundColor="Transparent"
+                TextChanged="OnSearchTextChanged"/>
+        </Border>
+
         <!-- Songs List -->
-        <ScrollView Grid.Row="2">
+        <ScrollView Grid.Row="3">
             <VerticalStackLayout Spacing="15">
                 <CollectionView
-    x:Name="SongsCollection"
-    SelectionMode="None">
+                    x:Name="SongsCollection"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
                             <Border
-                Stroke="{Binding BorderColor}"
-                StrokeThickness="2"
-                StrokeShape="RoundRectangle 12"
-                Background="#212121"
-                Margin="0,5"
-                Padding="15">
+                                Stroke="{Binding BorderColor}"
+                                StrokeThickness="2"
+                                StrokeShape="RoundRectangle 12"
+                                Background="#212121"
+                                Margin="0,5"
+                                Padding="15">
 
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnSongTapped" CommandParameter="{Binding .}"/>
@@ -65,67 +89,61 @@
 
                                     <!-- Play Button -->
                                     <Border
-                        Grid.Column="0"
-                        Background="#1db954"
-                        StrokeThickness="0"
-                        Padding="0"
-                        HeightRequest="40"
-                        WidthRequest="40"
-                        StrokeShape="RoundRectangle 20">
+                                        Grid.Column="0"
+                                        Background="#1db954"
+                                        StrokeThickness="0"
+                                        Padding="0"
+                                        HeightRequest="44"
+                                        WidthRequest="44"
+                                        StrokeShape="RoundRectangle 22">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnPlayButtonTapped" CommandParameter="{Binding .}"/>
                                         </Border.GestureRecognizers>
 
                                         <Label
-                            Text="{Binding PlayButtonText}"
-                            FontSize="18"
-                            TextColor="White"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center"
-                            Margin="0,0,0,2"/>
+                                            Text="{Binding PlayButtonText}"
+                                            FontSize="18"
+                                            TextColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center"/>
                                     </Border>
 
                                     <!-- Song Info -->
                                     <VerticalStackLayout
-                        Grid.Column="1"
-                        Spacing="4"
-                        Margin="15,0,0,0"
-                        VerticalOptions="Center">
+                                        Grid.Column="1"
+                                        Spacing="4"
+                                        Margin="15,0,0,0"
+                                        VerticalOptions="Center">
                                         <Label
-                            Text="{Binding Title}"
-                            FontSize="16"
-                            FontAttributes="Bold"
-                            TextColor="White"
-                            MaxLines="1"
-                            LineBreakMode="TailTruncation"/>
+                                            Text="{Binding Title}"
+                                            FontSize="16"
+                                            FontAttributes="Bold"
+                                            TextColor="White"
+                                            MaxLines="1"
+                                            LineBreakMode="TailTruncation"/>
                                         <Label
-                            Text="{Binding Artist}"
-                            FontSize="14"
-                            TextColor="#b3b3b3"
-                            MaxLines="1"
-                            LineBreakMode="TailTruncation"/>
+                                            Text="{Binding Artist}"
+                                            FontSize="14"
+                                            TextColor="#b3b3b3"
+                                            MaxLines="1"
+                                            LineBreakMode="TailTruncation"/>
+                                        <Label
+                                            Text="No preview available"
+                                            FontSize="11"
+                                            TextColor="#535353"
+                                            IsVisible="{Binding HasNoPreview}"/>
                                     </VerticalStackLayout>
 
                                     <!-- Checkmark -->
                                     <Label
-                        Grid.Column="2"
-                        Text="✓"
-                        FontSize="24"
-                        TextColor="#1db954"
-                        VerticalOptions="Center"
-                        IsVisible="{Binding IsSelected}">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="Scale" Value="1.0"/>
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="False">
-                                                <Setter Property="Scale" Value="0.0"/>
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
+                                        Grid.Column="2"
+                                        Text="✓"
+                                        FontSize="24"
+                                        TextColor="#1db954"
+                                        VerticalOptions="Center"
+                                        IsVisible="{Binding IsSelected}"/>
 
                                 </Grid>
-
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
@@ -139,13 +157,78 @@
                     Color="#1db954"
                     HeightRequest="50"
                     Margin="0,20"/>
+
+                <!-- Empty state when search has no results -->
+                <VerticalStackLayout
+                    x:Name="NoResultsView"
+                    IsVisible="False"
+                    HorizontalOptions="Center"
+                    Spacing="10"
+                    Margin="0,30">
+                    <Label
+                        Text="🔍"
+                        FontSize="50"
+                        HorizontalOptions="Center"/>
+                    <Label
+                        Text="No songs found"
+                        FontSize="18"
+                        TextColor="White"
+                        HorizontalOptions="Center"/>
+                    <Label
+                        Text="Try a different search term"
+                        FontSize="14"
+                        TextColor="#b3b3b3"
+                        HorizontalOptions="Center"/>
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Next Button -->
+        <!-- Now Playing bar (shown when a song is playing) -->
+        <Border
+            x:Name="NowPlayingBar"
+            Grid.Row="4"
+            BackgroundColor="#1a1a1a"
+            StrokeShape="RoundRectangle 12"
+            Stroke="#1db954"
+            StrokeThickness="1"
+            Padding="15,10"
+            Margin="0,10,0,0"
+            IsVisible="False">
+            <Grid ColumnDefinitions="*,Auto">
+                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                    <Label
+                        x:Name="NowPlayingTitle"
+                        Text=""
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        TextColor="White"
+                        LineBreakMode="TailTruncation"
+                        MaxLines="1"/>
+                    <Label
+                        x:Name="NowPlayingArtist"
+                        Text=""
+                        FontSize="12"
+                        TextColor="#1db954"
+                        LineBreakMode="TailTruncation"
+                        MaxLines="1"/>
+                </VerticalStackLayout>
+                <Button
+                    Grid.Column="1"
+                    x:Name="StopButton"
+                    Text="⏹"
+                    FontSize="20"
+                    TextColor="#1db954"
+                    BackgroundColor="Transparent"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    Clicked="OnStopButtonClicked"/>
+            </Grid>
+        </Border>
+
+        <!-- Continue Button -->
         <Button
             x:Name="NextButton"
-            Grid.Row="3"
+            Grid.Row="4"
             Text="Continue"
             FontSize="18"
             FontAttributes="Bold"
