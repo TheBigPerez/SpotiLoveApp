@@ -1,24 +1,21 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:local="clr-namespace:SpotiLove"
              x:Class="SpotiLove.SongSelectionPage"
              BackgroundColor="#121212">
-    <!-- Hidden MediaElement for audio playback -->
-    <ContentPage.Resources>
-        <ResourceDictionary/>
-    </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Padding="20">
 
-        <toolkit:MediaElement
-        x:Name="AudioPlayer"
-        Grid.Row="5"
-        IsVisible="False"
-        HeightRequest="0"
-        WidthRequest="0"
-        ShouldAutoPlay="False"
-        Volume="0.8"/>
+        <!-- Hidden Spotify Web Player (1x1 pixel, audio only) -->
+        <local:SpotifyWebPlayer
+            x:Name="SpotifyPlayer"
+            Grid.Row="5"
+            HeightRequest="1"
+            WidthRequest="1"
+            HorizontalOptions="Start"
+            VerticalOptions="Start"
+            IsVisible="False"/>
 
         <!-- Header -->
         <VerticalStackLayout Grid.Row="0" Spacing="10" Margin="0,20,0,15">
@@ -95,19 +92,18 @@
 
                                 <Grid ColumnDefinitions="Auto,*,Auto">
 
-                                    <!-- Play Button -->
+                                    <!-- Play / Pause Button -->
                                     <Border
                                         Grid.Column="0"
-                                        Background="#1db954"
                                         StrokeThickness="0"
                                         Padding="0"
                                         HeightRequest="44"
                                         WidthRequest="44"
-                                        StrokeShape="RoundRectangle 22">
+                                        StrokeShape="RoundRectangle 22"
+                                        Background="{Binding PlayButtonColor}">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnPlayButtonTapped" CommandParameter="{Binding .}"/>
                                         </Border.GestureRecognizers>
-
                                         <Label
                                             Text="{Binding PlayButtonText}"
                                             FontSize="18"
@@ -135,11 +131,6 @@
                                             TextColor="#b3b3b3"
                                             MaxLines="1"
                                             LineBreakMode="TailTruncation"/>
-                                        <Label
-                                            Text="No preview available"
-                                            FontSize="11"
-                                            TextColor="#535353"
-                                            IsVisible="{Binding HasNoPreview}"/>
                                     </VerticalStackLayout>
 
                                     <!-- Checkmark -->
@@ -166,32 +157,20 @@
                     HeightRequest="50"
                     Margin="0,20"/>
 
-                <!-- Empty state when search has no results -->
+                <!-- Empty state -->
                 <VerticalStackLayout
                     x:Name="NoResultsView"
                     IsVisible="False"
                     HorizontalOptions="Center"
                     Spacing="10"
                     Margin="0,30">
-                    <Label
-                        Text="🔍"
-                        FontSize="50"
-                        HorizontalOptions="Center"/>
-                    <Label
-                        Text="No songs found"
-                        FontSize="18"
-                        TextColor="White"
-                        HorizontalOptions="Center"/>
-                    <Label
-                        Text="Try a different search term"
-                        FontSize="14"
-                        TextColor="#b3b3b3"
-                        HorizontalOptions="Center"/>
+                    <Label Text="🔍" FontSize="50" HorizontalOptions="Center"/>
+                    <Label Text="No songs found" FontSize="18" TextColor="White" HorizontalOptions="Center"/>
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Now Playing bar (shown when a song is playing) -->
+        <!-- Now Playing bar -->
         <Border
             x:Name="NowPlayingBar"
             Grid.Row="4"
@@ -202,7 +181,7 @@
             Padding="15,10"
             Margin="0,10,0,0"
             IsVisible="False">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
                     <Label
                         x:Name="NowPlayingTitle"
@@ -220,12 +199,25 @@
                         LineBreakMode="TailTruncation"
                         MaxLines="1"/>
                 </VerticalStackLayout>
+
+                <!-- Pause/Resume toggle -->
                 <Button
                     Grid.Column="1"
-                    x:Name="StopButton"
-                    Text="⏹"
+                    x:Name="PauseResumeButton"
+                    Text="⏸"
                     FontSize="20"
                     TextColor="#1db954"
+                    BackgroundColor="Transparent"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    Clicked="OnPauseResumeClicked"/>
+
+                <!-- Stop -->
+                <Button
+                    Grid.Column="2"
+                    Text="⏹"
+                    FontSize="20"
+                    TextColor="#888888"
                     BackgroundColor="Transparent"
                     WidthRequest="44"
                     HeightRequest="44"
@@ -241,7 +233,7 @@
             FontSize="18"
             FontAttributes="Bold"
             TextColor="#121212"
-            BackgroundColor="#1db954"
+            BackgroundColor="#535353"
             CornerRadius="25"
             HeightRequest="50"
             Margin="0,20,0,10"

@@ -1,9 +1,10 @@
-using Microsoft.Maui;
-using Microsoft.Maui.Controls;
+// ============================================================
+// REPLACE your existing SongSelectionPage.xaml.cs with this
+// ============================================================
+
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
-using CommunityToolkit.Maui.Views;
 
 namespace SpotiLove;
 
@@ -17,7 +18,9 @@ public partial class SongSelectionPage : ContentPage
     private List<SongViewModel> _allSongs = new();
     private ObservableCollection<SongViewModel> _displayedSongs = new();
     private List<SongViewModel> _selectedSongs = new();
+
     private SongViewModel? _currentlyPlayingSong;
+    private bool _isPaused = false;
 
     public SongSelectionPage(Guid userId, List<string> selectedArtists)
     {
@@ -26,90 +29,174 @@ public partial class SongSelectionPage : ContentPage
         _selectedArtists = selectedArtists;
         _httpClient = new HttpClient();
         SongsCollection.ItemsSource = _displayedSongs;
-
-        NowPlayingBar.IsVisible = false;
-
-        _ = LoadSongsFromArtists();
-        AudioPlayer.MediaEnded += (s, e) =>
-      MainThread.BeginInvokeOnMainThread(StopCurrentSong);
-        AudioPlayer.MediaFailed += (s, e) =>
-            MainThread.BeginInvokeOnMainThread(() => {
-                StopCurrentSong();
-                _ = DisplayAlert("Playback Failed", "Could not play preview.", "OK");
-            });
-    }
-
-    // =========================================================
-    // Audio — single reusable MediaElement in visual tree
-    // =========================================================
-
-
-
-    private void StopCurrentSong()
-    {
-        AudioPlayer.Stop();
-        AudioPlayer.Source = null;
-
-        if (_currentlyPlayingSong != null)
-        {
-            _currentlyPlayingSong.IsPlaying = false;
-            _currentlyPlayingSong.PlayButtonText = "▶";
-            _currentlyPlayingSong = null;
-        }
-
         NowPlayingBar.IsVisible = false;
         NextButton.IsVisible = true;
+
+        WireUpPlayer();
+        _ = InitializePlayerAsync();
+        _ = LoadSongsFromArtists();
     }
+
+    // ── Player setup ─────────────────────────────────────────
+
+    private void WireUpPlayer()
+    {
+        SpotifyPlayer.PlayerReady += () =>
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Console.WriteLine("[SongSelection] Spotify player is ready!");
+            });
+        };
+
+        SpotifyPlayer.PlaybackStateChanged += isPlaying =>
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (_currentlyPlayingSong == null) return;
+
+                if (!isPlaying && !_isPaused)
+                {
+                    // Track ended naturally
+                    StopCurrentSong();
+                }
+            });
+        };
+
+        SpotifyPlayer.PlaybackError += errorMsg =>
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                Console.WriteLine($"[SongSelection] Playback error: {errorMsg}");
+
+                // account_error = no Premium
+                if (errorMsg?.Contains("account") == true)
+                {
+                    await DisplayAlert("Spotify Premium Required",
+                        "Full playback requires Spotify Premium. Opening song in Spotify app instead.",
+                        "OK");
+
+                    if (_currentlyPlayingSong?.SpotifyUri != null)
+                        await Launcher.OpenAsync(new Uri(_currentlyPlayingSong.SpotifyUri));
+                }
+                else
+                {
+                    await DisplayAlert("Playback Error", errorMsg ?? "Unknown error", "OK");
+                }
+
+                StopCurrentSong();
+            });
+        };
+    }
+
+    private async Task InitializePlayerAsync()
+    {
+        try
+        {
+            await SpotifyPlayer.InitializeAsync(_userId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SongSelection] Player init error: {ex.Message}");
+        }
+    }
+
+    // ── Play / Pause / Stop ──────────────────────────────────
 
     private async void OnPlayButtonTapped(object sender, TappedEventArgs e)
     {
         if (e.Parameter is not SongViewModel song) return;
 
-        if (song.IsPlaying) { StopCurrentSong(); return; }
-
-        StopCurrentSong();
-
-        string? previewUrl = song.DeezerPreviewUrl ?? song.PreviewUrl;
-
-        if (string.IsNullOrEmpty(previewUrl))
+        // Tapped the currently playing song → pause/resume toggle
+        if (_currentlyPlayingSong == song)
         {
-            bool openYT = await DisplayAlert(
-                "No Preview Available",
-                $"No preview for \"{song.Title}\". Open YouTube?",
-                "Open YouTube", "Cancel");
-            if (openYT) await SearchOnYouTube(song);
+            if (_isPaused)
+            {
+                await SpotifyPlayer.ResumeAsync();
+                _isPaused = false;
+                song.PlayButtonText = "⏸";
+                song.PlayButtonColor = Color.FromArgb("#1db954");
+                PauseResumeButton.Text = "⏸";
+            }
+            else
+            {
+                await SpotifyPlayer.PauseAsync();
+                _isPaused = true;
+                song.PlayButtonText = "▶";
+                song.PlayButtonColor = Color.FromArgb("#535353");
+                PauseResumeButton.Text = "▶";
+            }
             return;
         }
 
-        try
+        // Tapped a different song — stop current, start new
+        StopCurrentSong();
+
+        if (string.IsNullOrEmpty(song.SpotifyUri))
         {
-            AudioPlayer.Source = MediaSource.FromUri(previewUrl);
-            AudioPlayer.Play();
-
-            song.IsPlaying = true;
-            song.PlayButtonText = "⏸";
-            _currentlyPlayingSong = song;
-
-            NowPlayingTitle.Text = song.Title;
-            NowPlayingArtist.Text = song.Artist;
-            NowPlayingBar.IsVisible = true;
-            NextButton.IsVisible = false;
+            await DisplayAlert("Not Available", "No Spotify URI for this track.", "OK");
+            return;
         }
-        catch (Exception ex)
+
+        // Start playing
+        song.PlayButtonText = "⏸";
+        song.PlayButtonColor = Color.FromArgb("#1db954");
+        song.IsPlaying = true;
+        _currentlyPlayingSong = song;
+        _isPaused = false;
+
+        NowPlayingTitle.Text = song.Title;
+        NowPlayingArtist.Text = song.Artist;
+        NowPlayingBar.IsVisible = true;
+        NextButton.IsVisible = false;
+        PauseResumeButton.Text = "⏸";
+
+        await SpotifyPlayer.PlayAsync(song.SpotifyUri);
+    }
+
+    private async void OnPauseResumeClicked(object sender, EventArgs e)
+    {
+        if (_currentlyPlayingSong == null) return;
+
+        if (_isPaused)
         {
-            Console.WriteLine($"Playback error: {ex.Message}");
-            await DisplayAlert("Error", "Playback failed. Try another song.", "OK");
+            await SpotifyPlayer.ResumeAsync();
+            _isPaused = false;
+            _currentlyPlayingSong.PlayButtonText = "⏸";
+            _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#1db954");
+            PauseResumeButton.Text = "⏸";
+        }
+        else
+        {
+            await SpotifyPlayer.PauseAsync();
+            _isPaused = true;
+            _currentlyPlayingSong.PlayButtonText = "▶";
+            _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#535353");
+            PauseResumeButton.Text = "▶";
         }
     }
 
-    private void OnStopButtonClicked(object sender, EventArgs e)
+    private async void OnStopButtonClicked(object sender, EventArgs e)
     {
+        await SpotifyPlayer.StopAsync();
         StopCurrentSong();
     }
 
-    // =========================================================
-    // Load Songs
-    // =========================================================
+    private void StopCurrentSong()
+    {
+        if (_currentlyPlayingSong != null)
+        {
+            _currentlyPlayingSong.IsPlaying = false;
+            _currentlyPlayingSong.PlayButtonText = "▶";
+            _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#1db954");
+            _currentlyPlayingSong = null;
+        }
+        _isPaused = false;
+        NowPlayingBar.IsVisible = false;
+        NextButton.IsVisible = true;
+    }
+
+    // ── Load songs from backend ──────────────────────────────
 
     private async Task LoadSongsFromArtists()
     {
@@ -117,38 +204,36 @@ public partial class SongSelectionPage : ContentPage
         {
             LoadingIndicator.IsVisible = true;
             LoadingIndicator.IsRunning = true;
-
             _allSongs.Clear();
             _displayedSongs.Clear();
 
             foreach (var artistName in _selectedArtists)
             {
                 var response = await _httpClient.GetAsync(
-                    $"{_apiBaseUrl}/spotify/artist-top-tracks?artistName={Uri.EscapeDataString(artistName)}&limit=5"
-                );
+                    $"{_apiBaseUrl}/spotify/artist-top-tracks?artistName={Uri.EscapeDataString(artistName)}&limit=5");
 
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    var songs = JsonSerializer.Deserialize<List<SpotifySong>>(json, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                    var songs = JsonSerializer.Deserialize<List<SpotifySong>>(
+                        json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                     if (songs != null)
                     {
                         foreach (var song in songs)
                         {
+                            Console.WriteLine($"[Song] {song.Title} | URI: {song.SpotifyUri}");
                             _allSongs.Add(new SongViewModel
                             {
                                 Title = song.Title,
                                 Artist = song.Artist,
-                                PreviewUrl = song.PreviewUrl,
-                                DeezerPreviewUrl = song.DeezerPreviewUrl,
+                                SpotifyUri = song.SpotifyUri,
+                                SpotifyUrl = song.SpotifyUrl,
                                 IsSelected = false,
                                 IsPlaying = false,
                                 BorderColor = Colors.Transparent,
-                                PlayButtonText = "▶"
+                                PlayButtonText = "▶",
+                                PlayButtonColor = Color.FromArgb("#1db954")
                             });
                         }
                     }
@@ -170,9 +255,7 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // =========================================================
-    // Search / Filter
-    // =========================================================
+    // ── Search ───────────────────────────────────────────────
 
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
     {
@@ -187,8 +270,7 @@ public partial class SongSelectionPage : ContentPage
             ? _allSongs
             : _allSongs.Where(s =>
                 s.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                s.Artist.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-              ).ToList();
+                s.Artist.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList();
 
         foreach (var song in filtered)
             _displayedSongs.Add(song);
@@ -196,9 +278,7 @@ public partial class SongSelectionPage : ContentPage
         NoResultsView.IsVisible = !filtered.Any() && _allSongs.Any();
     }
 
-    // =========================================================
-    // Song Selection
-    // =========================================================
+    // ── Song selection ───────────────────────────────────────
 
     private void OnSongTapped(object sender, TappedEventArgs e)
     {
@@ -229,12 +309,11 @@ public partial class SongSelectionPage : ContentPage
             : Color.FromArgb("#535353");
     }
 
-    // =========================================================
-    // Continue / Save
-    // =========================================================
+    // ── Continue / save ──────────────────────────────────────
 
     private async void OnNextClicked(object sender, EventArgs e)
     {
+        await SpotifyPlayer.StopAsync();
         StopCurrentSong();
 
         if (_selectedSongs.Count < 5)
@@ -249,8 +328,7 @@ public partial class SongSelectionPage : ContentPage
             LoadingIndicator.IsRunning = true;
 
             var genreResponse = await _httpClient.GetAsync(
-                $"{_apiBaseUrl}/spotify/genres-from-artists?artists={Uri.EscapeDataString(string.Join(",", _selectedArtists))}"
-            );
+                $"{_apiBaseUrl}/spotify/genres-from-artists?artists={Uri.EscapeDataString(string.Join(",", _selectedArtists))}");
 
             List<string> genres = new();
             if (genreResponse.IsSuccessStatusCode)
@@ -259,13 +337,7 @@ public partial class SongSelectionPage : ContentPage
                 genres = JsonSerializer.Deserialize<List<string>>(json) ?? new();
             }
 
-            var finalGenres = genres
-                .GroupBy(g => g.ToLower())
-                .OrderByDescending(g => g.Count())
-                .Take(5)
-                .Select(g => g.Key)
-                .ToList();
-
+            var finalGenres = genres.Take(5).ToList();
             if (finalGenres.Count < 3) finalGenres = genres.Take(3).ToList();
 
             var songStrings = _selectedSongs.Select(s => $"{s.Title} by {s.Artist}").ToList();
@@ -284,7 +356,7 @@ public partial class SongSelectionPage : ContentPage
             if (saveResponse.IsSuccessStatusCode)
             {
                 await DisplayAlert("Success", "Your music profile has been created!", "Let's Go!");
-                NavigateToMain();
+                Application.Current!.MainPage = new NavigationPage(new MainPage());
             }
             else
             {
@@ -303,60 +375,39 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    private static void NavigateToMain()
-    {
-#pragma warning disable CS0618 // Application.MainPage is still the simplest cross-platform nav approach
-        Application.Current!.MainPage = new NavigationPage(new MainPage());
-#pragma warning restore CS0618
-    }
-
-    private async Task SearchOnYouTube(SongViewModel song)
-    {
-        try
-        {
-            var query = Uri.EscapeDataString($"{song.Title} {song.Artist} official audio");
-            await Launcher.OpenAsync($"https://www.youtube.com/results?search_query={query}");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Error", $"Could not open YouTube: {ex.Message}", "OK");
-        }
-    }
-
-    protected override void OnDisappearing()
+    protected override async void OnDisappearing()
     {
         base.OnDisappearing();
+        await SpotifyPlayer.StopAsync();
         StopCurrentSong();
     }
 }
 
-// =========================================================
-// View Models & DTOs
-// =========================================================
+// ── ViewModel ────────────────────────────────────────────────
 public class SongViewModel : BindableObject
 {
     private string _title = "";
     private string _artist = "";
-    private string? _previewUrl;
-    private string? _deezerPreviewUrl;
+    private string? _spotifyUri;
+    private string? _spotifyUrl;
     private bool _isSelected;
     private bool _isPlaying;
     private Color _borderColor = Colors.Transparent;
     private string _playButtonText = "▶";
+    private Color _playButtonColor = Color.FromArgb("#1db954");
 
     public string Title { get => _title; set { _title = value; OnPropertyChanged(); } }
     public string Artist { get => _artist; set { _artist = value; OnPropertyChanged(); } }
-    public string? PreviewUrl { get => _previewUrl; set { _previewUrl = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasNoPreview)); } }
-    public string? DeezerPreviewUrl { get => _deezerPreviewUrl; set { _deezerPreviewUrl = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasNoPreview)); } }
+    public string? SpotifyUri { get => _spotifyUri; set { _spotifyUri = value; OnPropertyChanged(); } }
+    public string? SpotifyUrl { get => _spotifyUrl; set { _spotifyUrl = value; OnPropertyChanged(); } }
     public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
     public bool IsPlaying { get => _isPlaying; set { _isPlaying = value; OnPropertyChanged(); } }
     public Color BorderColor { get => _borderColor; set { _borderColor = value; OnPropertyChanged(); } }
     public string PlayButtonText { get => _playButtonText; set { _playButtonText = value; OnPropertyChanged(); } }
-
-    public bool HasNoPreview =>
-        string.IsNullOrEmpty(PreviewUrl) && string.IsNullOrEmpty(DeezerPreviewUrl);
+    public Color PlayButtonColor { get => _playButtonColor; set { _playButtonColor = value; OnPropertyChanged(); } }
 }
 
+// ── DTOs ─────────────────────────────────────────────────────
 public class SpotifySong
 {
     public string Title { get; set; } = "";
