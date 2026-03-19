@@ -129,8 +129,6 @@ public partial class MainPage : ContentPage
 
     private async Task HandleInvalidSession()
     {
-        await DisplayAlert("Error", "User data not found. Please log in again.", "OK");
-
         // Clear any stored session
         SecureStorage.Remove("user_id");
         SecureStorage.Remove("user_name");
