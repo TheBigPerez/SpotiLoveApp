@@ -50,7 +50,7 @@ public partial class MainPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"🔍 Validating profile completeness for user {userId}");
+            System.Diagnostics.Debug.WriteLine($"Validating profile completeness for user {userId}");
 
             using var httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri("https://spotilove.danielnaz.com");
@@ -156,7 +156,7 @@ public partial class MainPage : ContentPage
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine($"🔄 Calling SpotiLoveAPIService.GetSwipes...");
+            System.Diagnostics.Debug.WriteLine($"Calling SpotiLoveAPIService.GetSwipes...");
             test = await SpotiLoveAPIService.GetSwipes(currentDTO);
 
             System.Diagnostics.Debug.WriteLine($" GetSwipes returned: {(test == null ? "null" : $"{test.Count} users")}");

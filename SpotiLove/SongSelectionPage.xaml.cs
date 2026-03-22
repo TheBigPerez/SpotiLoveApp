@@ -1,7 +1,3 @@
-// ============================================================
-// REPLACE your existing SongSelectionPage.xaml.cs with this
-// ============================================================
-
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +17,7 @@ public partial class SongSelectionPage : ContentPage
 
     private SongViewModel? _currentlyPlayingSong;
     private bool _isPaused = false;
+    private bool _usingPreviewPlayer = false;
 
     public SongSelectionPage(Guid userId, List<string> selectedArtists)
     {
@@ -32,12 +29,69 @@ public partial class SongSelectionPage : ContentPage
         NowPlayingBar.IsVisible = false;
         NextButton.IsVisible = true;
 
+        // Wire up the WebView audio player callbacks
+        AudioPlayer.Navigating += OnAudioPlayerNavigating;
+
         WireUpPlayer();
         _ = InitializePlayerAsync();
         _ = LoadSongsFromArtists();
     }
 
-    // ── Player setup ─────────────────────────────────────────
+    // -- WebView audio helpers (HTML5 <audio>) ------------------
+
+    private void PlayAudioPreview(string url)
+    {
+        AudioPlayer.Source = new HtmlWebViewSource
+        {
+            Html = $@"<html><body style='margin:0'>
+                <audio id='a' autoplay
+                    onended=""window.location.href='callback://ended'""
+                    onerror=""window.location.href='callback://error'"">
+                    <source src='{url}' type='audio/mpeg'>
+                </audio></body></html>"
+        };
+    }
+
+    private void ResumeAudio()
+    {
+        _ = AudioPlayer.EvaluateJavaScriptAsync("document.getElementById('a').play()");
+    }
+
+    private void PauseAudio()
+    {
+        _ = AudioPlayer.EvaluateJavaScriptAsync("document.getElementById('a').pause()");
+    }
+
+    private void StopAudio()
+    {
+        AudioPlayer.Source = new HtmlWebViewSource { Html = "<html><body></body></html>" };
+    }
+
+    private void OnAudioPlayerNavigating(object? sender, WebNavigatingEventArgs e)
+    {
+        if (e.Url.StartsWith("callback://ended"))
+        {
+            e.Cancel = true;
+            MainThread.BeginInvokeOnMainThread(() => StopCurrentSong());
+        }
+        else if (e.Url.StartsWith("callback://error"))
+        {
+            e.Cancel = true;
+            // Fall back to SpotifyWebPlayer if URI available
+            if (_currentlyPlayingSong?.SpotifyUri != null)
+            {
+                _usingPreviewPlayer = false;
+                MainThread.BeginInvokeOnMainThread(async () =>
+                    await SpotifyPlayer.PlayAsync(_currentlyPlayingSong.SpotifyUri));
+            }
+            else
+            {
+                MainThread.BeginInvokeOnMainThread(() => StopCurrentSong());
+            }
+        }
+    }
+
+    // -- Spotify Web Player setup -------------------------------
 
     private void WireUpPlayer()
     {
@@ -101,45 +155,54 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // ── Play / Pause / Stop ──────────────────────────────────
+    // -- Play / Pause / Stop ------------------------------------
 
     private async void OnPlayButtonTapped(object sender, TappedEventArgs e)
     {
         if (e.Parameter is not SongViewModel song) return;
 
-        // Tapped the currently playing song → pause/resume toggle
+        // Tapped the currently playing song -> pause/resume toggle
         if (_currentlyPlayingSong == song)
         {
             if (_isPaused)
             {
-                await SpotifyPlayer.ResumeAsync();
+                if (_usingPreviewPlayer)
+                    ResumeAudio();
+                else
+                    await SpotifyPlayer.ResumeAsync();
+
                 _isPaused = false;
-                song.PlayButtonText = "⏸";
+                song.PlayButtonText = "\u23f8";
                 song.PlayButtonColor = Color.FromArgb("#1db954");
-                PauseResumeButton.Text = "⏸";
+                PauseResumeButton.Text = "\u23f8";
             }
             else
             {
-                await SpotifyPlayer.PauseAsync();
+                if (_usingPreviewPlayer)
+                    PauseAudio();
+                else
+                    await SpotifyPlayer.PauseAsync();
+
                 _isPaused = true;
-                song.PlayButtonText = "▶";
+                song.PlayButtonText = "\u25b6";
                 song.PlayButtonColor = Color.FromArgb("#535353");
-                PauseResumeButton.Text = "▶";
+                PauseResumeButton.Text = "\u25b6";
             }
             return;
         }
 
-        // Tapped a different song — stop current, start new
+        // Tapped a different song -- stop current, start new
         StopCurrentSong();
 
-        if (string.IsNullOrEmpty(song.SpotifyUri))
+        var previewUrl = song.PreviewUrl ?? song.DeezerPreviewUrl;
+        if (string.IsNullOrEmpty(previewUrl) && string.IsNullOrEmpty(song.SpotifyUri))
         {
-            await DisplayAlert("Not Available", "No Spotify URI for this track.", "OK");
+            await DisplayAlert("Not Available", "No preview available for this track.", "OK");
             return;
         }
 
-        // Start playing
-        song.PlayButtonText = "⏸";
+        // Update UI
+        song.PlayButtonText = "\u23f8";
         song.PlayButtonColor = Color.FromArgb("#1db954");
         song.IsPlaying = true;
         _currentlyPlayingSong = song;
@@ -149,9 +212,20 @@ public partial class SongSelectionPage : ContentPage
         NowPlayingArtist.Text = song.Artist;
         NowPlayingBar.IsVisible = true;
         NextButton.IsVisible = false;
-        PauseResumeButton.Text = "⏸";
+        PauseResumeButton.Text = "\u23f8";
 
-        await SpotifyPlayer.PlayAsync(song.SpotifyUri);
+        if (!string.IsNullOrEmpty(previewUrl))
+        {
+            // Use 30-second preview (no Premium required)
+            _usingPreviewPlayer = true;
+            PlayAudioPreview(previewUrl);
+        }
+        else
+        {
+            // Fall back to Spotify Web Playback SDK
+            _usingPreviewPlayer = false;
+            await SpotifyPlayer.PlayAsync(song.SpotifyUri!);
+        }
     }
 
     private async void OnPauseResumeClicked(object sender, EventArgs e)
@@ -160,25 +234,37 @@ public partial class SongSelectionPage : ContentPage
 
         if (_isPaused)
         {
-            await SpotifyPlayer.ResumeAsync();
+            if (_usingPreviewPlayer)
+                ResumeAudio();
+            else
+                await SpotifyPlayer.ResumeAsync();
+
             _isPaused = false;
-            _currentlyPlayingSong.PlayButtonText = "⏸";
+            _currentlyPlayingSong.PlayButtonText = "\u23f8";
             _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#1db954");
-            PauseResumeButton.Text = "⏸";
+            PauseResumeButton.Text = "\u23f8";
         }
         else
         {
-            await SpotifyPlayer.PauseAsync();
+            if (_usingPreviewPlayer)
+                PauseAudio();
+            else
+                await SpotifyPlayer.PauseAsync();
+
             _isPaused = true;
-            _currentlyPlayingSong.PlayButtonText = "▶";
+            _currentlyPlayingSong.PlayButtonText = "\u25b6";
             _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#535353");
-            PauseResumeButton.Text = "▶";
+            PauseResumeButton.Text = "\u25b6";
         }
     }
 
     private async void OnStopButtonClicked(object sender, EventArgs e)
     {
-        await SpotifyPlayer.StopAsync();
+        if (_usingPreviewPlayer)
+            StopAudio();
+        else
+            await SpotifyPlayer.StopAsync();
+
         StopCurrentSong();
     }
 
@@ -187,16 +273,17 @@ public partial class SongSelectionPage : ContentPage
         if (_currentlyPlayingSong != null)
         {
             _currentlyPlayingSong.IsPlaying = false;
-            _currentlyPlayingSong.PlayButtonText = "▶";
+            _currentlyPlayingSong.PlayButtonText = "\u25b6";
             _currentlyPlayingSong.PlayButtonColor = Color.FromArgb("#1db954");
             _currentlyPlayingSong = null;
         }
         _isPaused = false;
+        _usingPreviewPlayer = false;
         NowPlayingBar.IsVisible = false;
         NextButton.IsVisible = true;
     }
 
-    // ── Load songs from backend ──────────────────────────────
+    // -- Load songs from backend --------------------------------
 
     private async Task LoadSongsFromArtists()
     {
@@ -222,17 +309,19 @@ public partial class SongSelectionPage : ContentPage
                     {
                         foreach (var song in songs)
                         {
-                            Console.WriteLine($"[Song] {song.Title} | URI: {song.SpotifyUri}");
+                            Console.WriteLine($"[Song] {song.Title} | URI: {song.SpotifyUri} | Preview: {song.PreviewUrl ?? song.DeezerPreviewUrl ?? "none"}");
                             _allSongs.Add(new SongViewModel
                             {
                                 Title = song.Title,
                                 Artist = song.Artist,
                                 SpotifyUri = song.SpotifyUri,
                                 SpotifyUrl = song.SpotifyUrl,
+                                PreviewUrl = song.PreviewUrl,
+                                DeezerPreviewUrl = song.DeezerPreviewUrl,
                                 IsSelected = false,
                                 IsPlaying = false,
                                 BorderColor = Colors.Transparent,
-                                PlayButtonText = "▶",
+                                PlayButtonText = "\u25b6",
                                 PlayButtonColor = Color.FromArgb("#1db954")
                             });
                         }
@@ -255,7 +344,7 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // ── Search ───────────────────────────────────────────────
+    // -- Search -------------------------------------------------
 
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
     {
@@ -278,7 +367,7 @@ public partial class SongSelectionPage : ContentPage
         NoResultsView.IsVisible = !filtered.Any() && _allSongs.Any();
     }
 
-    // ── Song selection ───────────────────────────────────────
+    // -- Song selection -----------------------------------------
 
     private void OnSongTapped(object sender, TappedEventArgs e)
     {
@@ -309,10 +398,11 @@ public partial class SongSelectionPage : ContentPage
             : Color.FromArgb("#535353");
     }
 
-    // ── Continue / save ──────────────────────────────────────
+    // -- Continue / save ----------------------------------------
 
     private async void OnNextClicked(object sender, EventArgs e)
     {
+        StopAudio();
         await SpotifyPlayer.StopAsync();
         StopCurrentSong();
 
@@ -356,7 +446,8 @@ public partial class SongSelectionPage : ContentPage
             if (saveResponse.IsSuccessStatusCode)
             {
                 await DisplayAlert("Success", "Your music profile has been created!", "Let's Go!");
-                Application.Current!.MainPage = new NavigationPage(new MainPage());
+                if (Application.Current?.Windows[0] is Window win)
+                    win.Page = new NavigationPage(new MainPage());
             }
             else
             {
@@ -378,12 +469,13 @@ public partial class SongSelectionPage : ContentPage
     protected override async void OnDisappearing()
     {
         base.OnDisappearing();
+        StopAudio();
         await SpotifyPlayer.StopAsync();
         StopCurrentSong();
     }
 }
 
-// ── ViewModel ────────────────────────────────────────────────
+// -- ViewModel --------------------------------------------------
 public class SongViewModel : BindableObject
 {
     private string _title = "";
@@ -393,13 +485,18 @@ public class SongViewModel : BindableObject
     private bool _isSelected;
     private bool _isPlaying;
     private Color _borderColor = Colors.Transparent;
-    private string _playButtonText = "▶";
+    private string _playButtonText = "\u25b6";
     private Color _playButtonColor = Color.FromArgb("#1db954");
 
     public string Title { get => _title; set { _title = value; OnPropertyChanged(); } }
     public string Artist { get => _artist; set { _artist = value; OnPropertyChanged(); } }
     public string? SpotifyUri { get => _spotifyUri; set { _spotifyUri = value; OnPropertyChanged(); } }
     public string? SpotifyUrl { get => _spotifyUrl; set { _spotifyUrl = value; OnPropertyChanged(); } }
+
+    private string? _previewUrl;
+    private string? _deezerPreviewUrl;
+    public string? PreviewUrl { get => _previewUrl; set { _previewUrl = value; OnPropertyChanged(); } }
+    public string? DeezerPreviewUrl { get => _deezerPreviewUrl; set { _deezerPreviewUrl = value; OnPropertyChanged(); } }
     public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
     public bool IsPlaying { get => _isPlaying; set { _isPlaying = value; OnPropertyChanged(); } }
     public Color BorderColor { get => _borderColor; set { _borderColor = value; OnPropertyChanged(); } }
@@ -407,7 +504,7 @@ public class SongViewModel : BindableObject
     public Color PlayButtonColor { get => _playButtonColor; set { _playButtonColor = value; OnPropertyChanged(); } }
 }
 
-// ── DTOs ─────────────────────────────────────────────────────
+// -- DTOs -------------------------------------------------------
 public class SpotifySong
 {
     public string Title { get; set; } = "";

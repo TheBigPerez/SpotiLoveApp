@@ -159,10 +159,10 @@ public partial class Login : ContentPage
     {
         try
         {
-            Debug.WriteLine("🎵 Spotify login button clicked");
+            Debug.WriteLine("Spotify login button clicked");
 
             var spotifyLoginUrl = $"{API_BASE_URL}/login";
-            Debug.WriteLine($"🔗 Opening URL: {spotifyLoginUrl}");
+            Debug.WriteLine($"Opening URL: {spotifyLoginUrl}");
 
             var browserOptions = new BrowserLaunchOptions
             {
