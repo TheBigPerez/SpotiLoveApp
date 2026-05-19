@@ -8,12 +8,13 @@ namespace SpotiLove
         public App()
         {
             InitializeComponent();
-
-            //Initialize with AppShell immediately
-            MainPage = new AppShell();
-
             // Register handler for query parameters (alternative to deep links)
             Routing.RegisterRoute("auth", typeof(Login));
+        }
+
+        protected override Window CreateWindow(IActivationState? activationState)
+        {
+            return new Window(new AppShell());
         }
 
         protected override async void OnStart()
@@ -54,7 +55,7 @@ namespace SpotiLove
         {
             try
             {
-                Debug.WriteLine($"🔍 Validating profile completeness for user {userId}");
+                Debug.WriteLine($"Validating profile completeness for user {userId}");
 
                 using var httpClient = new HttpClient();
                 httpClient.BaseAddress = new Uri(uriString);
@@ -165,7 +166,8 @@ namespace SpotiLove
                 }
                 else
                 {
-                    MainPage = new AppShell();
+                    if (Windows.Count > 0)
+                        Windows[0].Page = new AppShell();
                 }
             });
         }
@@ -176,7 +178,7 @@ namespace SpotiLove
             base.OnAppLinkRequestReceived(uri);
 
             Debug.WriteLine("=================================================");
-            Debug.WriteLine($"🔗 DEEP LINK RECEIVED!");
+            Debug.WriteLine($"DEEP LINK RECEIVED!");
             Debug.WriteLine($"   Full URI: {uri}");
             Debug.WriteLine($"   Scheme: {uri.Scheme}");
             Debug.WriteLine($"   Host: {uri.Host}");

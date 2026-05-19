@@ -5,12 +5,20 @@
              x:Class="SpotiLove.SongSelectionPage"
              BackgroundColor="#121212">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Padding="20">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Padding="20">
+
+        <!-- Hidden audio preview player (HTML5 audio via WebView) -->
+        <WebView
+            x:Name="AudioPlayer"
+            Grid.Row="5"
+            IsVisible="False"
+            HeightRequest="0"
+            WidthRequest="0"/>
 
         <!-- Hidden Spotify Web Player (1x1 pixel, audio only) -->
         <local:SpotifyWebPlayer
             x:Name="SpotifyPlayer"
-            Grid.Row="5"
+            Grid.Row="6"
             HeightRequest="1"
             WidthRequest="1"
             HorizontalOptions="Start"
