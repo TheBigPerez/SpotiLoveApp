@@ -132,15 +132,6 @@
                         FontSize="14"
                         TextColor="#b3b3b3"/>
                 </FlexLayout>
-
-                <Label
-                    Text="Forgot password?"
-                    FontSize="14"
-                    TextColor="#1db954">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnForgotPassword" />
-                    </Label.GestureRecognizers>
-                </Label>
             </FlexLayout>
 
             <!-- Login Button -->

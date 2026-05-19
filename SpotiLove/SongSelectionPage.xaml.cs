@@ -257,9 +257,94 @@ public partial class SongSelectionPage : ContentPage
 
     // ── Search ───────────────────────────────────────────────
 
+    // Replace OnSearchTextChanged:
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
     {
-        ApplyFilter(e.NewTextValue);
+        var query = e.NewTextValue?.Trim();
+
+        // If empty → restore the original artist songs
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            ApplyFilter(null);
+            return;
+        }
+
+        // Debounce: only hit the API after the user stops typing for 600ms
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        Task.Delay(600, token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+            MainThread.BeginInvokeOnMainThread(() => _ = SearchSongsFromApi(query));
+        }, token);
+    }
+
+    // Add this field at the top of the class (alongside the other fields):
+    private CancellationTokenSource? _searchCts;
+
+    // Add this new method:
+    private async Task SearchSongsFromApi(string query)
+    {
+        try
+        {
+            LoadingIndicator.IsVisible = true;
+            LoadingIndicator.IsRunning = true;
+
+            var response = await _httpClient.GetAsync(
+                $"{_apiBaseUrl}/spotify/search-songs?query={Uri.EscapeDataString(query)}&limit=20");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ApplyFilter(query); // Fall back to local filter
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var songs = JsonSerializer.Deserialize<List<SpotifySong>>(
+                json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            _displayedSongs.Clear();
+
+            if (songs == null || songs.Count == 0)
+            {
+                NoResultsView.IsVisible = true;
+                return;
+            }
+
+            NoResultsView.IsVisible = false;
+
+            foreach (var song in songs)
+            {
+                // Preserve selection state if song is already chosen
+                bool alreadySelected = _selectedSongs.Any(
+                    s => s.Title == song.Title && s.Artist == song.Artist);
+
+                _displayedSongs.Add(new SongViewModel
+                {
+                    Title = song.Title,
+                    Artist = song.Artist,
+                    SpotifyUri = song.SpotifyUri,
+                    SpotifyUrl = song.SpotifyUrl,
+                    IsSelected = alreadySelected,
+                    IsPlaying = false,
+                    BorderColor = alreadySelected ? Color.FromArgb("#1db954") : Colors.Transparent,
+                    PlayButtonText = "▶",
+                    PlayButtonColor = Color.FromArgb("#1db954")
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Song search error: {ex.Message}");
+            ApplyFilter(query); // Fall back gracefully
+        }
+        finally
+        {
+            LoadingIndicator.IsVisible = false;
+            LoadingIndicator.IsRunning = false;
+        }
     }
 
     private void ApplyFilter(string? searchText)

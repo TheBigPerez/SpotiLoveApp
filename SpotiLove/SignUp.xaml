@@ -348,24 +348,6 @@
             <!-- Social Login Buttons -->
             <VerticalStackLayout Spacing="15">
                 <Button
-                    Text="🔍 Continue with Google"
-                    FontSize="16"
-                    TextColor="White"
-                    BackgroundColor="#212121"
-                    CornerRadius="25"
-                    HeightRequest="45"
-                    Clicked="OnGoogleSignUp"/>
-
-                <Button
-                    Text="🍎 Continue with Apple"
-                    FontSize="16"
-                    TextColor="White"
-                    BackgroundColor="#212121"
-                    CornerRadius="25"
-                    HeightRequest="45"
-                    Clicked="OnAppleSignUp"/>
-
-                <Button
                     Text="♪ Continue with Spotify"
                     FontSize="16"
                     TextColor="White"
