@@ -8,12 +8,13 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Padding="20">
 
         <!-- Hidden audio preview player (HTML5 audio via WebView) -->
+        <!-- Hidden audio preview player -->
         <WebView
-            x:Name="AudioPlayer"
-            Grid.Row="5"
-            IsVisible="False"
-            HeightRequest="0"
-            WidthRequest="0"/>
+    x:Name="AudioPlayer"
+    Grid.Row="5"
+    IsVisible="False"
+    HeightRequest="1"
+    WidthRequest="1"/>
 
         <!-- Hidden Spotify Web Player (1x1 pixel, audio only) -->
         <local:SpotifyWebPlayer

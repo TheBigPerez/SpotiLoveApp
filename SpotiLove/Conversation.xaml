@@ -23,18 +23,20 @@
 
                 <!-- Profile Picture -->
                 <Border
-                    Grid.Column="1"
-                    StrokeShape="RoundRectangle 22"
-                    Stroke="#1db954"
-                    StrokeThickness="2"
-                    BackgroundColor="#535353"
-                    HeightRequest="44"
-                    WidthRequest="44"
-                    Margin="10,0,15,0"
-                    VerticalOptions="Center">
+    Grid.Column="1"
+    StrokeShape="RoundRectangle 22"
+    Stroke="#1db954"
+    StrokeThickness="2"
+    BackgroundColor="#535353"
+    HeightRequest="44"
+    WidthRequest="44"
+    Margin="10,0,15,0"
+    VerticalOptions="Center">
                     <Image
-                        x:Name="ProfileImage"
-                        Aspect="AspectFill"/>
+        x:Name="ProfileImage"
+        Aspect="AspectFill"
+        HeightRequest="40"
+        WidthRequest="40"/>
                 </Border>
 
                 <!-- Name and Status -->

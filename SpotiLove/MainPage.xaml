@@ -82,19 +82,18 @@
                             <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
 
                                 <Border
-                                    StrokeShape="RoundRectangle 100"
-                                    Stroke="#1db954"
-                                    StrokeThickness="3"
-                                    BackgroundColor="#535353"
-                                    HeightRequest="160"
-                                    WidthRequest="160"
-                                    HorizontalOptions="Center">
+    StrokeShape="RoundRectangle 100"
+    Stroke="#1db954"
+    StrokeThickness="3"
+    BackgroundColor="#535353"
+    HeightRequest="160"
+    WidthRequest="160"
+    HorizontalOptions="Center">
                                     <Image
-                                        x:Name="UserSuggestionImage"
-                                        Source="images.png"
-                                        Aspect="AspectFill"
-                                        VerticalOptions="Center"
-                                        HorizontalOptions="Center" />
+        x:Name="UserSuggestionImage"
+        Aspect="AspectFill"
+        HeightRequest="154"
+        WidthRequest="154"/>
                                 </Border>
 
                                 <VerticalStackLayout Spacing="6" HorizontalOptions="Center">

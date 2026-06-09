@@ -417,33 +417,16 @@ public partial class MainPage : ContentPage
                     // Update profile image
                     if (UserSuggestionImage != null)
                     {
-                        if (user.Images != null && user.Images.Count > 0)
+                        string? imageUrl = user.Images?
+                            .FirstOrDefault(url => !string.IsNullOrWhiteSpace(url));
+
+                        if (!string.IsNullOrWhiteSpace(imageUrl))
                         {
-                            var imageUrl = user.Images[0];
-
-                            if (!string.IsNullOrWhiteSpace(imageUrl))
+                            try
                             {
-                                if (_imageCache.ContainsKey(imageUrl))
-                                {
-                                    UserSuggestionImage.Source = _imageCache[imageUrl];
-                                }
-                                else
-                                {
-                                    UserSuggestionImage.Source = "placeholder_loading.png";
-
-                                    try
-                                    {
-                                        var imageSource = ImageSource.FromUri(new Uri(imageUrl));
-                                        _imageCache[imageUrl] = imageSource;
-                                        UserSuggestionImage.Source = imageSource;
-                                    }
-                                    catch (UriFormatException)
-                                    {
-                                        UserSuggestionImage.Source = imageUrl;
-                                    }
-                                }
+                                UserSuggestionImage.Source = ImageSource.FromUri(new Uri(imageUrl));
                             }
-                            else
+                            catch
                             {
                                 UserSuggestionImage.Source = "default_user.png";
                             }

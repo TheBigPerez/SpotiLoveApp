@@ -95,16 +95,17 @@
                                         Grid.RowSpan="2"
                                         StrokeShape="RoundRectangle 30"
                                         Stroke="{Binding IsOnline, Converter={StaticResource BoolToColorConverter}}"
-                                        StrokeThickness="2"
+                                         StrokeThickness="2"
                                         BackgroundColor="#535353"
                                         HeightRequest="60"
                                         WidthRequest="60"
                                         VerticalOptions="Center">
                                         <Image
-                                            Source="{Binding ProfileImage}"
-                                            Aspect="AspectFill"/>
+                                        Source="{Binding ProfileImage}"
+                                        Aspect="AspectFill"
+                                        HeightRequest="56"
+                                        WidthRequest="56"/>
                                     </Border>
-
                                     <!-- Name and Last Message -->
                                     <VerticalStackLayout Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" 
                                                         Margin="15,0,10,0" 
