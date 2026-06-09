@@ -9,30 +9,40 @@
         <!-- Header -->
         <Grid Grid.Row="0" Padding="20,20,20,10" BackgroundColor="#1a1a1a">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
+            <Button
+        Grid.Column="0"
+        Text="←"
+        FontSize="24"
+        TextColor="White"
+        BackgroundColor="Transparent"
+        WidthRequest="40"
+        HeightRequest="40"
+        Clicked="OnBackClicked"/>
+
             <Label 
-                Text="Messages"
-                FontSize="28"
-                FontAttributes="Bold"
-                TextColor="White"
-                VerticalOptions="Center"
-                Grid.Column="0"/>
+        Grid.Column="1"
+        Text="Messages"
+        FontSize="28"
+        FontAttributes="Bold"
+        TextColor="White"
+        VerticalOptions="Center"/>
 
             <Button
-                Grid.Column="1"
-                Text="✎"
-                FontSize="24"
-                TextColor="#1db954"
-                BackgroundColor="Transparent"
-                WidthRequest="50"
-                HeightRequest="50"
-                CornerRadius="25"
-                Clicked="OnNewChatClicked"/>
+        Grid.Column="2"
+        Text="✎"
+        FontSize="24"
+        TextColor="#1db954"
+        BackgroundColor="Transparent"
+        WidthRequest="50"
+        HeightRequest="50"
+        CornerRadius="25"
+        Clicked="OnNewChatClicked"/>
         </Grid>
-
         <!-- Search Bar -->
         <Border
             Grid.Row="1"

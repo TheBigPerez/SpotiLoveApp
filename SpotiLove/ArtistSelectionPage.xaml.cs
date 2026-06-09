@@ -7,7 +7,7 @@ namespace SpotiLove;
 public partial class ArtistSelectionPage : ContentPage
 {
     private readonly HttpClient _httpClient;
-    private readonly string _apiBaseUrl = "https://spotilove.danielnaz.com";
+    private static readonly string _apiBaseUrl = "https://spotilove.danielnaz.com";
     private readonly Guid _userId;
     private ObservableCollection<ArtistViewModel> _artists = new();
     private List<ArtistViewModel> _selectedArtists = new();
@@ -24,7 +24,7 @@ public partial class ArtistSelectionPage : ContentPage
     }
 
     // =========================================================
-    // 🎵 Load Popular Artists
+    //   Load Popular Artists
     // =========================================================
     private async Task LoadPopularArtists()
     {
@@ -46,10 +46,13 @@ public partial class ArtistSelectionPage : ContentPage
                 _artists.Clear();
                 foreach (var artist in artists ?? new())
                 {
+                    var imageUrl = artist.ImageUrl;
+                    System.Diagnostics.Debug.WriteLine($"[Artist] {artist.Name} -> ImageUrl: {imageUrl}");
+
                     _artists.Add(new ArtistViewModel
                     {
                         Name = artist.Name,
-                        ImageUrl = artist.ImageUrl ?? "https://via.placeholder.com/200",
+                        ImageUrl = ProxiedImageUrl(artist.ImageUrl),
                         IsSelected = false,
                         BorderColor = Colors.Transparent
                     });
@@ -69,6 +72,13 @@ public partial class ArtistSelectionPage : ContentPage
             LoadingIndicator.IsVisible = false;
             LoadingIndicator.IsRunning = false;
         }
+    }
+    public static string ProxiedImageUrl(string? originalUrl)
+    {
+        if (string.IsNullOrWhiteSpace(originalUrl))
+            return "default_user.png";
+
+        return $"{_apiBaseUrl}/proxy-image?url={Uri.EscapeDataString(originalUrl)}";
     }
 
     //  Search Artists
@@ -102,10 +112,11 @@ public partial class ArtistSelectionPage : ContentPage
                 _artists.Clear();
                 foreach (var artist in artists ?? new())
                 {
+                    var imageUrl = artist.ImageUrl;
                     _artists.Add(new ArtistViewModel
                     {
                         Name = artist.Name,
-                        ImageUrl = artist.ImageUrl ?? "https://via.placeholder.com/200",
+                        ImageUrl = ProxiedImageUrl(artist.ImageUrl),
                         IsSelected = _selectedArtists.Any(a => a.Name == artist.Name),
                         BorderColor = _selectedArtists.Any(a => a.Name == artist.Name)
                             ? Colors.Green
@@ -129,7 +140,7 @@ public partial class ArtistSelectionPage : ContentPage
         }
     }
 
-    // 🖱️ Artist Selection Logic
+    //  Artist Selection Logic
     private void OnArtistTapped(object sender, EventArgs e)
     {
         if (sender is not Frame frame || frame.BindingContext is not ArtistViewModel artist)
@@ -176,7 +187,7 @@ public partial class ArtistSelectionPage : ContentPage
 }
 
 // =========================================================
-// 📦 View Models & DTOs
+//  View Models & DTOs
 // =========================================================
 public class ArtistViewModel : BindableObject
 {

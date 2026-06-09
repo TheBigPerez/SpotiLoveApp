@@ -91,7 +91,7 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // -- Spotify Web Player setup -------------------------------
+    // -- Spotify Web Player setup 
 
     private void WireUpPlayer()
     {
@@ -155,7 +155,7 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // -- Play / Pause / Stop ------------------------------------
+    // -- Play / Pause / Stop -----
 
     private async void OnPlayButtonTapped(object sender, TappedEventArgs e)
     {
@@ -283,7 +283,7 @@ public partial class SongSelectionPage : ContentPage
         NextButton.IsVisible = true;
     }
 
-    // -- Load songs from backend --------------------------------
+    // -- Load songs from backend -
 
     private async Task LoadSongsFromArtists()
     {
@@ -344,7 +344,7 @@ public partial class SongSelectionPage : ContentPage
         }
     }
 
-    // -- Search -------------------------------------------------
+    // -- Search ------------------
 
     // Replace OnSearchTextChanged:
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
@@ -452,7 +452,7 @@ public partial class SongSelectionPage : ContentPage
         NoResultsView.IsVisible = !filtered.Any() && _allSongs.Any();
     }
 
-    // -- Song selection -----------------------------------------
+    // -- Song selection ----------
 
     private void OnSongTapped(object sender, TappedEventArgs e)
     {
@@ -483,7 +483,7 @@ public partial class SongSelectionPage : ContentPage
             : Color.FromArgb("#535353");
     }
 
-    // -- Continue / save ----------------------------------------
+    // -- Continue / save ---------
 
     private async void OnNextClicked(object sender, EventArgs e)
     {
@@ -560,7 +560,7 @@ public partial class SongSelectionPage : ContentPage
     }
 }
 
-// -- ViewModel --------------------------------------------------
+// -- ViewModel -------------------
 public class SongViewModel : BindableObject
 {
     private string _title = "";
@@ -589,7 +589,7 @@ public class SongViewModel : BindableObject
     public Color PlayButtonColor { get => _playButtonColor; set { _playButtonColor = value; OnPropertyChanged(); } }
 }
 
-// -- DTOs -------------------------------------------------------
+// -- DTOs 
 public class SpotifySong
 {
     public string Title { get; set; } = "";

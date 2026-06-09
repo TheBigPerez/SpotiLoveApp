@@ -1,8 +1,3 @@
-// ================================================================
-// NEW FILE: SpotiLove/PlaylistService.cs
-// Place in: C:\Users\User\source\repos\SpotiLoveApp\SpotiLove\
-// ================================================================
-
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -80,7 +75,7 @@ public class PlaylistService
         return body.Length > 200 ? body[..200] : body;
     }
 
-    // ── Response DTOs ─────────────────────────────────────────
+    // ── Response DTOs ──
 
     private class PlaylistApiResponse
     {

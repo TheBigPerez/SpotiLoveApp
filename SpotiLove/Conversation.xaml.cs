@@ -215,6 +215,8 @@ public partial class Conversation : ContentPage
     // Load Messages from API
     // =========================================================
 
+    private int _lastMessageCount = 0;
+
     private async Task LoadMessages(bool scrollToBottom = true)
     {
         try
@@ -225,11 +227,7 @@ public partial class Conversation : ContentPage
                 $"{_apiBaseUrl}/chats/{UserData.Current.Id}/messages/{_chat.UserId}"
             );
 
-            if (!response.IsSuccessStatusCode)
-            {
-                Debug.WriteLine($"Failed to load messages: {response.StatusCode}");
-                return;
-            }
+            if (!response.IsSuccessStatusCode) return;
 
             var json = await response.Content.ReadAsStringAsync();
             var result = JsonSerializer.Deserialize<MessagesApiResponse>(json, new JsonSerializerOptions
@@ -239,6 +237,10 @@ public partial class Conversation : ContentPage
 
             if (result?.Messages == null) return;
 
+            // Only re-render if message count changed
+            if (result.Messages.Count == _lastMessageCount && !scrollToBottom) return;
+            _lastMessageCount = result.Messages.Count;
+
             MessagesContainer.Clear();
 
             if (!result.Messages.Any())
@@ -247,7 +249,6 @@ public partial class Conversation : ContentPage
                 return;
             }
 
-            // Group messages by date
             var grouped = result.Messages
                 .OrderBy(m => m.SentAt)
                 .GroupBy(m => m.SentAt.ToLocalTime().Date);
@@ -267,20 +268,12 @@ public partial class Conversation : ContentPage
                     bool isOutgoing = msg.FromUserId == UserData.Current.Id;
                     string time = msg.SentAt.ToLocalTime().ToString("h:mm tt");
 
-                    // Detect playlist system messages and render them with a special style
-                    if (msg.Content.StartsWith("🎵") && msg.Content.Contains("spotilove.danielnaz.com") == false
-                        && msg.Content.Contains("spotify.com"))
-                    {
+                    if (msg.Content.StartsWith("🎵") && msg.Content.Contains("spotify.com"))
                         AddPlaylistMessage(msg.Content, time, isOutgoing);
-                    }
                     else if (isOutgoing)
-                    {
                         AddOutgoingMessage(msg.Content, time, msg.IsRead);
-                    }
                     else
-                    {
                         AddIncomingMessage(msg.Content, time, _chat.Name);
-                    }
                 }
             }
 
@@ -292,7 +285,6 @@ public partial class Conversation : ContentPage
             Debug.WriteLine($"Error loading messages: {ex.Message}");
         }
     }
-
     // =========================================================
     // Message bubble builders
     // =========================================================

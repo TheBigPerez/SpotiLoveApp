@@ -44,7 +44,7 @@ public partial class Chats : ContentPage
             // ── 1. Load existing conversations (users we've messaged) ──────────
             await LoadConversations();
 
-            // ── 2. Also load matches who haven't been messaged yet ─────────────
+            // ── 2. Also load matches who haven't been messaged yet 
             await LoadMatchesWithoutConversation();
 
             UpdateFilteredChats(ChatSearchBar.Text);
@@ -189,6 +189,10 @@ public partial class Chats : ContentPage
             chat.UnreadCount = 0;
             await Navigation.PushAsync(new Conversation(chat));
         }
+    }
+    private async void OnBackClicked(object sender, EventArgs e)
+    {
+        await Navigation.PopAsync();
     }
 
     private async void OnNewChatClicked(object sender, EventArgs e)

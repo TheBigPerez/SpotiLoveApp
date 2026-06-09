@@ -10,7 +10,7 @@ namespace SpotiLove;
 
 public class SpotifyWebPlayer : ContentView
 {
-    // ── Events that SongSelectionPage listens to ─────────────
+    // ── Events that SongSelectionPage listens to 
     public event Action? PlayerReady;
     public event Action<bool>? PlaybackStateChanged;   // true = playing
     public event Action<string>? PlaybackError;
@@ -42,7 +42,7 @@ public class SpotifyWebPlayer : ContentView
         IsVisible = false;
     }
 
-    // ── Public API ───────────────────────────────────────────
+    // ── Public API ────
 
     /// Call this once, passing the logged-in user's ID.
     /// Fetches the Spotify token from your backend and loads the player page.
@@ -105,7 +105,7 @@ public class SpotifyWebPlayer : ContentView
     public async Task SetVolumeAsync(double volume) =>
         await RunJsAsync($"window.setVolume({volume.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)})");
 
-    // ── Private helpers ──────────────────────────────────────
+    // ── Private helpers ────────────
 
     private async Task RunJsAsync(string js)
     {

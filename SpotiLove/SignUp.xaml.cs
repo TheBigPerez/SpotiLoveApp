@@ -288,7 +288,7 @@ public partial class SignUp : ContentPage
     private static bool HasMinimumPasswordStrength(string password)
         => password.Any(char.IsLetter) && password.Any(char.IsDigit);
 
-    // ── Social / other button handlers ──────────────────────────────
+    // ── Social / other button handlers ────
 
     private async void OnSpotifySignUp(object sender, EventArgs e)
     {
@@ -316,7 +316,7 @@ public partial class SignUp : ContentPage
         => await DisplayAlert("Privacy Policy",
             "We encrypt your data and never sell it.\nYou can delete your account at any time.\nVisit our website for the full policy.", "OK");
 
-    // ── Response DTOs ────────────────────────────────────────────────
+    // ── Response DTOs ─────────
 
     public class RegisterResponse
     {

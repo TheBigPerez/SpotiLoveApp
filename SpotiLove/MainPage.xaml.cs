@@ -220,20 +220,21 @@ public partial class MainPage : ContentPage
                 "Cancel"
             );
 
-            if (confirm)
+            if (!confirm) return;
+
+            SecureStorage.Remove("user_id");
+            SecureStorage.Remove("user_name");
+            SecureStorage.Remove("user_email");
+            SecureStorage.Remove("auth_token");
+
+            UserData.Current = null;
+            _imageCache.Clear();
+            test = null;
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                // Clear all session data
-                SecureStorage.Remove("user_id");
-                SecureStorage.Remove("user_name");
-                SecureStorage.Remove("user_email");
-                SecureStorage.Remove("auth_token");
-
-                UserData.Current = null;
-                _imageCache.Clear();
-                test = null;
-
-                await Shell.Current.GoToAsync("//Login");
-            }
+                Application.Current!.MainPage = new NavigationPage(new Login());
+            });
         }
         catch (Exception ex)
         {
@@ -241,7 +242,6 @@ public partial class MainPage : ContentPage
             await DisplayAlert("Error", "Failed to disconnect. Please try again.", "OK");
         }
     }
-
     private async void LIKE_Clicked(object sender, EventArgs e)
     {
         if (test != null && test.Count > 0)
