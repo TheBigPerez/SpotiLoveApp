@@ -101,7 +101,7 @@
                                         WidthRequest="60"
                                         VerticalOptions="Center">
                                         <Image
-                                        Source="{Binding ProfileImage}"
+                                        Source="{Binding ProfileImage, Converter={StaticResource ProfileImageConverter}}"
                                         Aspect="AspectFill"
                                         HeightRequest="56"
                                         WidthRequest="56"/>

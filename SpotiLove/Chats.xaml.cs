@@ -21,6 +21,7 @@ public partial class Chats : ContentPage
         Resources.Add("BoolToColorConverter", new BoolToColorConverter());
         Resources.Add("UnreadMessageColorConverter", new UnreadMessageColorConverter());
         Resources.Add("UnreadMessageFontConverter", new UnreadMessageFontConverter());
+        Resources.Add("ProfileImageConverter", new ProfileImageConverter());
     }
 
     protected override async void OnAppearing()

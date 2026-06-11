@@ -14,7 +14,10 @@ public partial class Conversation : ContentPage
     private readonly string _apiBaseUrl = "https://spotilove.danielnaz.com";
 
     private System.Timers.Timer? _pollTimer;
-    private bool _isLoadingMessages = false;  // prevent concurrent loads
+    private bool _isLoadingMessages = false;
+
+    private List<Guid> _lastMsgIds = new();
+    private bool _isSending = false;
 
     public Conversation(ChatViewModel chat)
     {
@@ -25,8 +28,7 @@ public partial class Conversation : ContentPage
         _playlistService = new PlaylistService();
 
         UserNameLabel.Text = chat.Name;
-        ProfileImage.Source = string.IsNullOrEmpty(chat.ProfileImage)
-            ? "default_user.png" : chat.ProfileImage;
+        ProfileImage.Source = ImageHelper.Resolve(chat.ProfileImage);
         StatusLabel.Text = chat.IsOnline ? "Online" : "Active recently";
         StatusLabel.TextColor = chat.IsOnline
             ? Color.FromArgb("#1db954")
@@ -36,6 +38,7 @@ public partial class Conversation : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Debug.WriteLine("[Conversation] OnAppearing — resetting state");
         await LoadMessages();
         StartPolling();
     }
@@ -43,6 +46,7 @@ public partial class Conversation : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        Debug.WriteLine("[Conversation] OnDisappearing — stopping poll timer");
         StopPolling();
     }
 
@@ -52,12 +56,11 @@ public partial class Conversation : ContentPage
 
     private void StartPolling()
     {
-        // Don't create a second timer if one is already running
-        if (_pollTimer != null) return;
-
+        if (_isSending) return;
         _pollTimer = new System.Timers.Timer(5000);
         _pollTimer.Elapsed += async (s, e) =>
         {
+            if (_isSending) return;
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 await LoadMessages(scrollToBottom: false);
@@ -65,22 +68,25 @@ public partial class Conversation : ContentPage
         };
         _pollTimer.AutoReset = true;
         _pollTimer.Start();
+        Debug.WriteLine("[Conversation] Poll timer started");
     }
 
     private void StopPolling()
     {
         _pollTimer?.Stop();
         _pollTimer?.Dispose();
-        _pollTimer = null;
+        _pollTimer = null; // FIX 3: must null out so guard works on next OnAppearing
+        Debug.WriteLine("[Conversation] Poll timer stopped");
     }
 
     // =========================================================
     // Load Messages
     // =========================================================
 
-    private async Task LoadMessages(bool scrollToBottom = true)
+    private async Task LoadMessages(
+        bool scrollToBottom = true,
+        bool forceRebuild = false)
     {
-        // Prevent concurrent loads from overlapping
         if (_isLoadingMessages) return;
         _isLoadingMessages = true;
 
@@ -94,8 +100,7 @@ public partial class Conversation : ContentPage
 
             if (!response.IsSuccessStatusCode)
             {
-                Debug.WriteLine($"Failed to load messages: {response.StatusCode}");
-                // DON'T clear the container — keep showing whatever is there
+                Debug.WriteLine($"[Conversation] Failed to load messages: {response.StatusCode}");
                 return;
             }
 
@@ -103,14 +108,35 @@ public partial class Conversation : ContentPage
             var result = JsonSerializer.Deserialize<MessagesApiResponse>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            // DON'T clear until we know the data is valid
             if (result?.Messages == null)
             {
-                Debug.WriteLine("Messages response was null or malformed");
+                Debug.WriteLine("[Conversation] Messages response was null or malformed");
                 return;
             }
 
-            // Only now is it safe to rebuild the UI
+            // FIX 1: compare IDs — skip rebuild if nothing changed
+            var newIds = result.Messages
+                .OrderBy(m => m.SentAt)
+                .Select(m => m.Id)
+                .ToList();
+
+            Debug.WriteLine($"[Conversation] LoadMessages — got {result.Messages.Count} messages from server");
+            Debug.WriteLine($"[Conversation] LoadMessages — _lastMsgIds has {_lastMsgIds.Count}");
+
+            bool hasKnownState = _lastMsgIds.Count > 0;
+            bool changed = !newIds.SequenceEqual(_lastMsgIds);
+
+            Debug.WriteLine($"[Conversation] hasKnownState={hasKnownState}, changed={changed}");
+            if (!forceRebuild)
+            {
+                if (hasKnownState && !changed) return;
+                if (hasKnownState && newIds.Count < _lastMsgIds.Count) return;
+                if (hasKnownState && !newIds.Any()) return;
+            }
+
+            _lastMsgIds = newIds;
+
+            Debug.WriteLine("[Conversation] MessagesContainer cleared, rebuilding...");
             MessagesContainer.Clear();
 
             if (!result.Messages.Any())
@@ -147,13 +173,14 @@ public partial class Conversation : ContentPage
                 }
             }
 
+            Debug.WriteLine($"[Conversation] Rebuild complete — {MessagesContainer.Count} views in container");
+
             if (scrollToBottom)
                 await ScrollToBottom();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error loading messages: {ex.Message}");
-            // Don't clear on exception either
+            Debug.WriteLine($"[Conversation] Error loading messages: {ex.Message}");
         }
         finally
         {
@@ -167,15 +194,14 @@ public partial class Conversation : ContentPage
 
     private async void OnSendMessageClicked(object sender, EventArgs e)
     {
+        _isSending = true;
         var message = MessageEntry.Text?.Trim();
         if (string.IsNullOrWhiteSpace(message)) return;
         if (UserData.Current == null) return;
 
-        // Clear input immediately for UX
         var sentText = message;
         MessageEntry.Text = string.Empty;
 
-        // Add optimistic bubble
         var time = DateTime.Now.ToString("h:mm tt");
         AddOutgoingMessage(sentText, time, false);
         await ScrollToBottom();
@@ -191,29 +217,32 @@ public partial class Conversation : ContentPage
 
             var content = new StringContent(
                 JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
             var response = await _httpClient.PostAsync($"{_apiBaseUrl}/chats/send", content);
+            Debug.WriteLine($"Send status: {response.StatusCode}");
 
             if (response.IsSuccessStatusCode)
             {
-                // Replace the optimistic bubble with the real DB message
+                // DO NOT wipe _lastMsgIds. let change-detect swap bubble -> real.
+                await Task.Delay(800);
                 await LoadMessages(scrollToBottom: true);
             }
             else
             {
-                var err = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"Send message failed: {err}");
-
-                // Remove the optimistic bubble so the user knows it failed
-                await LoadMessages(scrollToBottom: false);
+                // send fail -> force real state, kill the fake bubble
+                await LoadMessages(scrollToBottom: false, forceRebuild: true);
                 await DisplayAlert("Error", "Message could not be delivered. Please try again.", "OK");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error sending message: {ex.Message}");
-            // Remove optimistic bubble on exception too
-            await LoadMessages(scrollToBottom: false);
+            Debug.WriteLine($"[Conversation] Error sending message: {ex.Message}");
+            await LoadMessages(scrollToBottom: false, forceRebuild: true);
             await DisplayAlert("Error", "Failed to send message.", "OK");
+        }
+        finally
+        {
+            _isSending = false;
         }
     }
 
@@ -235,6 +264,7 @@ public partial class Conversation : ContentPage
             var content = new StringContent(
                 JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             await _httpClient.PostAsync($"{_apiBaseUrl}/chats/send", content);
+            await Task.Delay(800);
             await LoadMessages();
         }
         catch (Exception ex)
